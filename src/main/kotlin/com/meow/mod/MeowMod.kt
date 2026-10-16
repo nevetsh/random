@@ -22,11 +22,20 @@ import com.meow.mod.features.WorldScanner
 import com.meow.mod.skyblock.LocationUtils
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 
 object MeowMod : ClientModInitializer {
 	const val MOD_ID = "meowmod"
-	const val VERSION = "1.4.0"
+
+	// Read from the mod metadata rather than a constant kept by hand here: the build writes
+	// gradle.properties into fabric.mod.json, so the version shown in the config screen can
+	// no longer be left behind by a release (the 1.4.1 build title said v1.4.0).
+	val VERSION: String
+		get() = FabricLoader.getInstance()
+			.getModContainer(MOD_ID)
+			.map { it.metadata.version.friendlyString }
+			.orElse("dev")
 
 	private val allFeatures: List<Feature> = listOf(
 		HideFromServers, AutoCombine, ModUpdater,

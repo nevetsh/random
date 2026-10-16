@@ -32,7 +32,7 @@ object DiscordChat : Feature(
 	enabledByDefault = true
 ) {
 	private const val BASE = "https://discord.com/api/v10"
-	private const val USER_AGENT = "MeowMod (https://github.com/nevetsh/random, " + MeowMod.VERSION + ")"
+	private val USER_AGENT = "MeowMod (https://github.com/nevetsh/random, " + MeowMod.VERSION + ")"
 
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 
