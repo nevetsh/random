@@ -19,12 +19,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object ModUpdater : Feature(
 	"modUpdater",
-	"Checks GitHub for a newer MeowMod release, downloads it, swaps out the old jar and restarts the client to apply it.",
+	"Checks GitHub for a newer MeowMod build, downloads it, swaps out the old jar and restarts the client to apply it.",
 	subcategory = "Updater",
 	displayName = "Auto Updater",
 	enabledByDefault = true
 ) {
 	private const val REPO = "nevetsh/random"
+	private const val API = "https://api.github.com/repos/$REPO"
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 
 	private val SETTING_AUTO_RESTART = addSwitch(
@@ -35,6 +36,8 @@ object ModUpdater : Feature(
 	)
 
 	private val started = AtomicBoolean(false)
+
+	private data class Candidate(val tag: String, val url: String, val name: String)
 
 	override fun onEnable() {
 		if (started.getAndSet(true)) return
@@ -58,53 +61,34 @@ object ModUpdater : Feature(
 				.followRedirects(HttpClient.Redirect.NORMAL)
 				.build()
 
-			val request = HttpRequest.newBuilder(URI.create("https://api.github.com/repos/$REPO/releases/latest"))
-				.header("Accept", "application/vnd.github+json")
-				.header("User-Agent", "MeowMod-Updater")
-				.timeout(Duration.ofSeconds(15))
-				.GET()
-				.build()
-
-			val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-			if (response.statusCode() == 404) {
-				LOGGER.info("[MeowMod] Auto updater: no releases published on $REPO yet")
-				return
-			}
-			if (response.statusCode() != 200) {
-				LOGGER.warn("[MeowMod] Update check failed with HTTP {}", response.statusCode())
+			val candidate = fetchFromReleases(client) ?: fetchFromFolder(client)
+			if (candidate == null) {
+				LOGGER.info("[MeowMod] Auto updater: no update source found on $REPO")
 				return
 			}
 
-			val json = JsonParser.parseString(response.body()).asJsonObject
-			val tag = json.get("tag_name")?.takeIf { it.isJsonPrimitive }?.asString ?: return
-
-			if (!isNewer(parseVersion(tag), parseVersion(currentVersion()))) {
+			if (compareVersions(parseVersion(candidate.tag), parseVersion(currentVersion())) <= 0) {
 				LOGGER.info("[MeowMod] Auto updater: already up to date (v{})", currentVersion())
 				return
 			}
 
-			val asset = findAsset(json)
-			if (asset == null) {
-				LOGGER.warn("[MeowMod] Release {} has no downloadable .jar asset", tag)
-				return
-			}
-
 			val gameDir = loader().gameDir
-			val modsDir = gameDir.resolve("mods")
 			val staging = gameDir.resolve("meowmod-update.jar")
 			Files.deleteIfExists(staging)
-			download(client, asset.first, staging)
-			LOGGER.info("[MeowMod] Auto updater: downloaded {} ({})", tag, asset.second)
+			download(client, candidate.url, staging)
+			LOGGER.info("[MeowMod] Auto updater: downloaded {} ({})", candidate.tag, candidate.name)
 
-			ChatUtils.sendMessage("&aMeowMod update &f$tag&a downloaded (current &f${currentVersion()}&a).", true)
+			ChatUtils.sendMessage("&aMeowMod update &f${candidate.tag}&a downloaded (current &f${currentVersion()}&a).", true)
 
-			install(gameDir, modsDir, staging, codeSource, tag)
+			install(gameDir, gameDir.resolve("mods"), staging, codeSource, candidate.tag)
 		} catch (e: Exception) {
 			LOGGER.warn("[MeowMod] Auto updater error: {}", e.message)
 		}
 	}
 
-	private fun findAsset(json: JsonObject): Pair<String, String>? {
+	private fun fetchFromReleases(client: HttpClient): Candidate? {
+		val json = getJson(client, "$API/releases/latest") as? JsonObject ?: return null
+		val tag = json.get("tag_name")?.takeIf { it.isJsonPrimitive }?.asString ?: return null
 		val assets = json.getAsJsonArray("assets") ?: return null
 		val objects = assets.map { it.asJsonObject }
 		val chosen = objects.firstOrNull {
@@ -112,10 +96,37 @@ object ModUpdater : Feature(
 			name.startsWith("meowmod") && name.endsWith(".jar")
 		} ?: objects.firstOrNull { (it.get("name")?.asString ?: "").endsWith(".jar") }
 			?: return null
-
 		val name = chosen.get("name")?.asString ?: return null
 		val url = chosen.get("browser_download_url")?.asString ?: return null
-		return url to name
+		return Candidate(tag, url, name)
+	}
+
+	private fun fetchFromFolder(client: HttpClient): Candidate? {
+		val json = getJson(client, "$API/contents/releases") as? com.google.gson.JsonArray ?: return null
+		val jars = json.mapNotNull { element ->
+			val obj = element.asJsonObject
+			val name = obj.get("name")?.asString ?: return@mapNotNull null
+			if (!name.startsWith("meowmod") || !name.endsWith(".jar")) return@mapNotNull null
+			val url = obj.get("download_url")?.asString ?: return@mapNotNull null
+			val tag = name.removePrefix("meowmod-").removeSuffix(".jar")
+			Candidate(tag, url, name)
+		}
+		return jars.maxWithOrNull { a, b -> compareVersions(parseVersion(a.tag), parseVersion(b.tag)) }
+	}
+
+	private fun getJson(client: HttpClient, url: String): com.google.gson.JsonElement? {
+		val request = HttpRequest.newBuilder(URI.create(url))
+			.header("Accept", "application/vnd.github+json")
+			.header("User-Agent", "MeowMod-Updater")
+			.timeout(Duration.ofSeconds(15))
+			.GET()
+			.build()
+		val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+		if (response.statusCode() != 200) {
+			LOGGER.info("[MeowMod] Auto updater: {} returned HTTP {}", url, response.statusCode())
+			return null
+		}
+		return JsonParser.parseString(response.body())
 	}
 
 	private fun download(client: HttpClient, url: String, dest: Path) {
@@ -197,12 +208,12 @@ rm -f "${'$'}0"
 			.split('.')
 			.map { it.toIntOrNull() ?: 0 }
 
-	private fun isNewer(remote: List<Int>, local: List<Int>): Boolean {
-		for (i in 0 until maxOf(remote.size, local.size)) {
-			val a = remote.getOrElse(i) { 0 }
-			val b = local.getOrElse(i) { 0 }
-			if (a != b) return a > b
+	private fun compareVersions(a: List<Int>, b: List<Int>): Int {
+		for (i in 0 until maxOf(a.size, b.size)) {
+			val x = a.getOrElse(i) { 0 }
+			val y = b.getOrElse(i) { 0 }
+			if (x != y) return x.compareTo(y)
 		}
-		return false
+		return 0
 	}
 }
