@@ -19,11 +19,11 @@ import org.slf4j.LoggerFactory
 //
 // Detection is by item + tooltip name rather than menu title, so it keeps working if
 // Hypixel renames the menus.
-object Auto2Days : Feature(
-	"auto2d",
+object AutoAuction : Feature(
+	"autoAuction",
 	"Sets your auction listing duration: opens the duration picker (the clock in the create-auction menu) and picks the configured option (default \"2 Days\").",
-	subcategory = "Auto 2d",
-	displayName = "Auto 2d",
+	subcategory = "Auto Auction",
+	displayName = "Auto Auction",
 	enabledByDefault = true
 ) {
 	private val durationData = addText(
@@ -66,7 +66,7 @@ object Auto2Days : Feature(
 		if (!itemName.contains(CREATE_AUCTION, ignoreCase = true)) return
 		armed = true
 		armedAt = System.currentTimeMillis()
-		LOGGER.info("[MeowMod] Auto2d: armed by clicking \"$itemName\" (target \"${durationData.get().trim()}\")")
+		LOGGER.info("[MeowMod] AutoAuction: armed by clicking \"$itemName\" (target \"${durationData.get().trim()}\")")
 	}
 
 	override fun onEnable() {
@@ -119,7 +119,7 @@ object Auto2Days : Feature(
 				stack.item == Items.DYED_TERRACOTTA.white() &&
 					stack.hoverName.string.contains(wanted, ignoreCase = true)
 			} ?: return
-			LOGGER.info("[MeowMod] Auto2d: picking \"$wanted\" at slot $slot")
+			LOGGER.info("[MeowMod] AutoAuction: picking \"$wanted\" at slot $slot")
 			click(slot)
 			reset()
 			return
@@ -133,7 +133,7 @@ object Auto2Days : Feature(
 		// Already on the wanted duration, so there is nothing to change.
 		if (items[clock].hoverName.string.contains(wanted, ignoreCase = true)) return
 
-		LOGGER.info("[MeowMod] Auto2d: opening the duration picker (slot $clock, target \"$wanted\")")
+		LOGGER.info("[MeowMod] AutoAuction: opening the duration picker (slot $clock, target \"$wanted\")")
 		click(clock)
 		pickedClock = true
 		clockAt = System.currentTimeMillis()

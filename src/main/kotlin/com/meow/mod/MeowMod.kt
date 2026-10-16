@@ -4,7 +4,8 @@ import com.meow.mod.api.ChatUtils
 import com.meow.mod.command.MeowCommand
 import com.meow.mod.config.Config
 import com.meow.mod.events.MeowEvents
-import com.meow.mod.features.Auto2Days
+import com.meow.mod.features.AutoAuction
+import com.meow.mod.features.AutoBz
 import com.meow.mod.features.AutoCombine
 import com.meow.mod.features.AutoExperiments
 import com.meow.mod.features.AutoHarp
@@ -24,13 +25,13 @@ import net.minecraft.client.Minecraft
 
 object MeowMod : ClientModInitializer {
 	const val MOD_ID = "meowmod"
-	const val VERSION = "1.2.1"
+	const val VERSION = "1.3.0"
 
 	private val allFeatures: List<Feature> = listOf(
 		HideFromServers, AutoCombine, ModUpdater,
 		AutoHarp, AutoExperiments, TriggerBot, WorldScanner,
 		KeyCommand, CustomName, DiscordChat, SkipCommandConfirm,
-		Auto2Days
+		AutoAuction, AutoBz
 	)
 
 	override fun onInitializeClient() {
@@ -52,7 +53,8 @@ object MeowMod : ClientModInitializer {
 		WorldScanner.initialize()
 		KeyCommand.initialize()
 		DiscordChat.initialize()
-		Auto2Days.initialize()
+		AutoAuction.initialize()
+		AutoBz.initialize()
 
 		Config.load()
 

@@ -7,7 +7,8 @@
 		"ChatScreenMixin",
 		"FontMixin",
 		"CommandConfirmMixin",
-		"ContainerClickMixin"
+		"ContainerClickMixin",
+		"SignEditScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

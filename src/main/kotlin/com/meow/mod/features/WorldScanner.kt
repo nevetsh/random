@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.chunk.LevelChunk
 import net.minecraft.world.phys.Vec3
+import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 
 // Ported from OdinClient (skies-starred/OdinClient, BSD-3-Clause)
@@ -32,6 +33,8 @@ object WorldScanner : Feature(
 	private const val DARK_PURPLE = 0xFFAA00AA.toInt()
 	private const val LIGHT_PURPLE = 0xFFFF55FF.toInt()
 	private const val WHITE = 0xFFFFFFFF.toInt()
+
+	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 
 	private val scanCrystals = addSwitch("scanCrystals", true, "Scans for crystal waypoints.", "Scan Crystals")
 	private val scanMobSpots = addSwitch("scanMobSpots", true, "Scans for mob spawn locations.", "Scan Mob Spots")
@@ -120,34 +123,41 @@ object WorldScanner : Feature(
 		val camera = minecraft.gameRenderer.mainCamera().position()
 		val pose = ctx.poseStack()
 		pose.pushPose()
-		pose.translate(-camera.x, -camera.y, -camera.z)
+		// The pose stack belongs to the level renderer and is shared with every other mod
+		// drawing in this phase, so it has to come back out balanced even if anything
+		// below throws - otherwise everything drawn after us lands in the wrong place.
+		try {
+			pose.translate(-camera.x, -camera.y, -camera.z)
 
-		waypoints.forEach { (_, data) ->
-			val shouldRender = when (data.category) {
-				0 -> scanCrystals.get()
-				1 -> scanMobSpots.get()
-				2 -> scanFairyGrottos.get()
-				3 -> scanDragonNest.get()
-				4 -> scanWormFishing.get()
-				else -> false
+			waypoints.forEach { (_, data) ->
+				val shouldRender = when (data.category) {
+					0 -> scanCrystals.get()
+					1 -> scanMobSpots.get()
+					2 -> scanFairyGrottos.get()
+					3 -> scanDragonNest.get()
+					4 -> scanWormFishing.get()
+					else -> false
+				}
+				if (!shouldRender) return@forEach
+
+				val pos = data.pos
+				val color = data.color
+				ctx.submitNodeCollector().submitCustomGeometry(pose, RenderTypes.lines()) { p, vc ->
+					box(vc, p, pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), pos.x + 1.0, pos.y + 1.0, pos.z + 1.0, color)
+				}
 			}
-			if (!shouldRender) return@forEach
 
-			val pos = data.pos
-			val color = data.color
-			ctx.submitNodeCollector().submitCustomGeometry(pose, RenderTypes.lines()) { p, vc ->
-				box(vc, p, pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), pos.x + 1.0, pos.y + 1.0, pos.z + 1.0, color)
+			if ((lavaEsp.get() || waterEsp.get()) && minecraft.player != null) {
+				val playerPos = minecraft.player!!.position()
+				val rangeSq = espRange.get() * espRange.get()
+				if (lavaEsp.get()) lavaBlocks.forEach { renderBlock(ctx, pose, it, rangeSq, playerPos, GOLD) }
+				if (waterEsp.get()) waterBlocks.forEach { renderBlock(ctx, pose, it, rangeSq, playerPos, AQUA) }
 			}
+		} catch (t: Throwable) {
+			LOGGER.error("[MeowMod] World Scanner: drawing failed", t)
+		} finally {
+			pose.popPose()
 		}
-
-		if ((lavaEsp.get() || waterEsp.get()) && minecraft.player != null) {
-			val playerPos = minecraft.player!!.position()
-			val rangeSq = espRange.get() * espRange.get()
-			if (lavaEsp.get()) lavaBlocks.forEach { renderBlock(ctx, pose, it, rangeSq, playerPos, GOLD) }
-			if (waterEsp.get()) waterBlocks.forEach { renderBlock(ctx, pose, it, rangeSq, playerPos, AQUA) }
-		}
-
-		pose.popPose()
 	}
 
 	private fun renderBlock(ctx: LevelRenderContext, pose: PoseStack, packed: Long, rangeSq: Double, playerPos: Vec3, color: Int) {
