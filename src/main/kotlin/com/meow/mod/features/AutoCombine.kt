@@ -33,22 +33,43 @@ object AutoCombine : Feature(
 		"Force Click Only"
 	)
 	private val books = mapOf(
+		"ultimate_bank" to 5,
+		"ultimate_bobbin_time" to 5,
+		"ultimate_chimera" to 5,
+		"ultimate_combo" to 5,
+		"ultimate_crop_fever" to 5,
+		"ultimate_fatal_tempo" to 5,
+		"ultimate_first_impression" to 5,
+		"ultimate_flash" to 5,
+		"ultimate_flowstate" to 3,
+		"ultimate_habanero_tactics" to 5,
+		"ultimate_inferno" to 5,
+		"ultimate_jerry" to 5,
+		"ultimate_last_stand" to 5,
 		"ultimate_legion" to 5,
+		"ultimate_missile" to 5,
+		"ultimate_no_pain_no_gain" to 5,
+		"ultimate_refrigerate" to 5,
+		"ultimate_reiterate" to 5,
+		"ultimate_rend" to 5,
+		"ultimate_soul_eater" to 5,
+		"ultimate_sunset" to 5,
+		"ultimate_swarm" to 5,
+		"ultimate_the_one" to 5,
 		"ultimate_wise" to 5,
 		"ultimate_wisdom" to 5,
-		"ultimate_last_stand" to 5,
-		"ultimate_swarm" to 5,
-		"ultimate_soul_eater" to 5,
 		"overload" to 5,
 		"rejuvenate" to 5,
 		"dragon_hunter" to 5,
 		"smoldering" to 5,
-		"green_thumb" to 5
+		"green_thumb" to 5,
+		"infinite_quiver" to 10
 	)
 	private val data = CopyOnWriteArrayList<BookSlot>()
 	private val sortedData = ConcurrentHashMap<String, MutableList<BookSlot>>()
 	private var currentEnchant: String? = null
 	private var lastClick = -1L
+	private var lastProgress = System.currentTimeMillis()
 	private val stash = mutableListOf<String>()
 	private var lastInv = MutableList<ItemStack?>(90) { null }
 
@@ -81,6 +102,10 @@ object AutoCombine : Feature(
 	}
 
 	private fun onContainerTick(container: AbstractContainerScreen<*>) {
+		if (stash.isNotEmpty() && System.currentTimeMillis() - lastProgress > stuckTimeout()) {
+			recover(container)
+			return
+		}
 		if (!canClick()) return
 		val items = container.menu.items
 
@@ -89,8 +114,8 @@ object AutoCombine : Feature(
 		val isSign = midItem.item == Items.OAK_SIGN
 
 		if (midItem.item == Items.BARRIER) {
-			ChatUtils.sendMessage("&c[&4Meow&c] &cSeems like the Auto Combine did not get correct books, try re-opening the anvil menu")
-			reset()
+			ChatUtils.sendMessage("&c[&4Meow&c] &cSeems like the Auto Combine did not get correct books, re-opening cleanly")
+			recover(container)
 			return
 		}
 		if (SETTING_FORCE_ONLY.get()) {
@@ -152,11 +177,11 @@ object AutoCombine : Feature(
 	private fun onEnchantTick(container: AbstractContainerScreen<*>) {
 		val items = container.menu.items
 		val inv = MutableList(90) { items.getOrNull(it) }
-		if (inv != lastInv) {
-			data.clear()
-			sortedData.clear()
-		}
+		if (inv == lastInv) return
 		lastInv = inv
+		lastProgress = System.currentTimeMillis()
+		data.clear()
+		sortedData.clear()
 
 		items.forEachIndexed { idx, itemStack ->
 			if (idx < 54) return@forEachIndexed
@@ -180,7 +205,7 @@ object AutoCombine : Feature(
 		}
 
 		data.forEach { sortedData.getOrPut("${it.enchantName}:${it.level}") { mutableListOf() }.add(it) }
-		sortedData.entries.forEach { (k, v) -> if (v.size < 2) sortedData.remove(k) }
+		sortedData.entries.forEach { (k, v) -> if (v.distinctBy { it.uuid }.size < 2) sortedData.remove(k) }
 		lastClick = System.currentTimeMillis()
 	}
 
@@ -192,6 +217,19 @@ object AutoCombine : Feature(
 		sortedData.clear()
 		if (full) stash.clear()
 		currentEnchant = null
+	}
+
+	private fun stuckTimeout(): Long =
+		maxOf(3500L, (SETTING_DELAY.get() * 8).toLong())
+
+	private fun recover(container: AbstractContainerScreen<*>) {
+		val items = container.menu.items
+		if (items.getOrNull(29)?.item == Items.ENCHANTED_BOOK) ScreenUtils.click(29, true)
+		if (items.getOrNull(33)?.item == Items.ENCHANTED_BOOK) ScreenUtils.click(33, true)
+		reset()
+		lastInv = MutableList<ItemStack?>(90) { null }
+		lastProgress = System.currentTimeMillis()
+		lastClick = System.currentTimeMillis()
 	}
 
 	private fun container(): AbstractContainerScreen<*>? =

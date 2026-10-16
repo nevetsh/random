@@ -54,12 +54,10 @@ public class ConnectionMixin {
 		String namespace = id.getNamespace();
 		String path = id.getPath();
 
-		if (namespace.equals("fabric")) {
-			LOGGER.info("[MeowMod] Blocked outbound mod payload: {}", id);
-			ci.cancel();
-			return;
-		}
-		if (namespace.equals("minecraft") && (path.equals("register") || path.equals("unregister"))) {
+		boolean modChannel = !namespace.equals("minecraft");
+		boolean channelRegistry = path.equals("register") || path.equals("unregister");
+
+		if (modChannel || channelRegistry) {
 			LOGGER.info("[MeowMod] Blocked outbound mod payload: {}", id);
 			ci.cancel();
 		}
