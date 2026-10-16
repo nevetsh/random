@@ -1,6 +1,7 @@
 package com.meow.mod.features
 
 import com.meow.mod.api.ScreenUtils
+import com.meow.mod.api.humanDelay
 import com.meow.mod.skyblock.LocationUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
@@ -10,7 +11,7 @@ import net.minecraft.world.item.Items
 // Ported from OdinClient (skies-starred/OdinClient, BSD-3-Clause)
 object AutoHarp : Feature(
 	"autoHarp",
-	"Tries to do the Harp for you! (clicks the lit quartz block automatically)",
+	"Plays the Harp for you (clicks the lit quartz block).",
 	subcategory = "Auto Harp",
 	displayName = "Auto Harp",
 	enabledByDefault = true
@@ -28,6 +29,9 @@ object AutoHarp : Feature(
 	private var hash = 0
 	private var initialized = false
 	private var lastClick = 0L
+
+	// How long to wait before the next click, rolled once when the last one happened.
+	private var nextDelay = 0L
 
 	fun initialize() {
 		if (initialized) return
@@ -56,9 +60,10 @@ object AutoHarp : Feature(
 			}
 
 			val now = System.currentTimeMillis()
-			if (now - lastClick < settingDelay.get().toLong()) return@register
+			if (now - lastClick < nextDelay) return@register
 			hash = newHash
 			lastClick = now
+			nextDelay = humanDelay(settingDelay.get().toLong())
 
 			ScreenUtils.click(slot, button = "MIDDLE")
 		}
@@ -68,6 +73,7 @@ object AutoHarp : Feature(
 		enabled = true
 		hash = 0
 		lastClick = 0L
+		nextDelay = 0L
 	}
 
 	override fun onDisable() {

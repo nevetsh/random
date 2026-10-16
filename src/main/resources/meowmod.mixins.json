@@ -8,7 +8,8 @@
 		"FontMixin",
 		"CommandConfirmMixin",
 		"ContainerClickMixin",
-		"SignEditScreenMixin"
+		"SignEditScreenMixin",
+		"UseBlockMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

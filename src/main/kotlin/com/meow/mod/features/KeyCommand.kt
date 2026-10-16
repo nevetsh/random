@@ -2,6 +2,8 @@ package com.meow.mod.features
 
 import com.google.gson.Gson
 import com.google.gson.JsonParser
+import com.meow.mod.api.ItemUtils
+import com.meow.mod.api.humanDelay
 import com.meow.mod.events.MeowEvents
 import com.meow.mod.skyblock.DungeonUtils
 import com.meow.mod.ui.KeybindsScreen
@@ -18,7 +20,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 object KeyCommand : Feature(
 	"keyCommand",
-	"Bind any keyboard key to a command. Also includes Auto F7 (auto-requeue once the Blood room is cleared).",
+	"Bind keys to commands, plus Auto F7 requeue after the Blood room.",
 	subcategory = "Key Command",
 	displayName = "Key Command",
 	enabledByDefault = true
@@ -48,7 +50,7 @@ object KeyCommand : Feature(
 	private val settingAutoF7 = addSwitch(
 		"autoF7",
 		true,
-		"Once the Blood room Giant and miniboss are killed, run the Auto F7 command and confirm the join menu. If the dungeon entry message never arrives it sends the command and clicks again; two ESC presses from you stop it.",
+		"After the Blood room: run the command, confirm the join. ESC x2 stops it.",
 		"Auto F7"
 	)
 
@@ -71,6 +73,19 @@ object KeyCommand : Feature(
 	private const val ENTER_TIMEOUT = 5000L
 	private const val MAX_REQUEUE_ATTEMPTS = 5
 
+	// A party that is queued sits on Hypixel's "Creating instance..." map (the screen advertises
+	// something like 14 seconds) and the entry message only arrives once that is done, so the
+	// wait for it is refreshed for as long as that map is open.
+	private const val QUEUE_TIMEOUT = 60000L
+
+	// Every fifth reopen is logged, so a queue that keeps fighting back is visible in the log
+	// without filling it.
+	private const val CLOSE_MENU_LOG_EVERY = 5
+
+	// How long after the join click the queue menu is still looked for. Hypixel can swap it in
+	// after our first close, so the search does not stop the moment one menu has been closed.
+	private const val QUEUE_GRACE = 10000L
+
 	private val giantNames = listOf("giant", "bigfoot", "l.a.s.r")
 	private val miniNames = listOf("bonzo", "scarf", "spirit bear", "livid")
 
@@ -80,6 +95,13 @@ object KeyCommand : Feature(
 	private var confirmCooldown = 0L
 	private var escapeAt = 0L
 	private var escapeScreen: Screen? = null
+	private var escapeArmed = false
+	private var escapeAttempts = 0
+	private var escapeUntil = 0L
+
+	// Set once the instance map shows up: the party is queued, so the command must not be
+	// sent again and the entry message is worth waiting for.
+	private var queued = false
 	private var giantSeen = false
 	private var miniSeen = false
 	private val seenNames = HashSet<String>()
@@ -152,18 +174,41 @@ object KeyCommand : Feature(
 			confirmMenu(mc)
 		}
 
-		// The join was clicked but the dungeon entry message never showed up, so the
-		// requeue did not take: send the command and click the icon again.
+		// The join was clicked but the dungeon entry message never showed up, so the requeue
+		// did not take: send the command and click the icon again. While the instance map is
+		// open the party is queued but not in yet, so the wait is refreshed instead - sending
+		// the command again there would only start a second queue.
 		if (requeueing && !awaitingConfirm && enterDeadline > 0L && System.currentTimeMillis() > enterDeadline) {
-			retryRequeue(mc, "no dungeon entry message")
+			if (isInstanceMap(mc.gui.screen())) {
+				noteQueued()
+				enterDeadline = System.currentTimeMillis() + QUEUE_TIMEOUT
+			} else {
+				retryRequeue(mc, "no dungeon entry message")
+			}
 		}
 
-		// Once the confirm button has been clicked, close the leftover menu with ESC
-		// so the player isn't stuck in it. Only close if that exact menu is still open.
-		if (escapeScreen != null && System.currentTimeMillis() >= escapeAt) {
-			val screen = escapeScreen
-			escapeScreen = null
-			if (screen != null && mc.gui.screen() === screen) screen.onClose()
+		// Once the confirm button has been clicked, close the leftover menu with ESC so the
+		// player isn't stuck in it. The join menu turns into Hypixel's instance map while the
+		// party is set up, and Hypixel replaces that menu with a new screen, so the map itself
+		// is the clue that this is still the queue menu: matching only the screen that was
+		// clicked in leaves it open on the "Creating instance..." map.
+		if (escapeArmed && System.currentTimeMillis() >= escapeAt) {
+			val menu = mc.gui.screen() as? AbstractContainerScreen<*>
+			if (isInstanceMap(menu)) noteQueued()
+			val queueMenu = menu != null && (menu === escapeScreen || isInstanceMap(menu))
+			if (queueMenu) {
+				escapeAttempts++
+				if (escapeAttempts == 1) {
+					LOGGER.info("[MeowMod] AutoF7: closing the queue menu")
+				} else if (escapeAttempts % CLOSE_MENU_LOG_EVERY == 0) {
+					LOGGER.info("[MeowMod] AutoF7: the queue menu keeps coming back, closing it again (attempt $escapeAttempts)")
+				}
+				menu.onClose()
+			}
+			// Hypixel reopens the instance map while the instance is being made, so it is held
+			// closed for as long as the party is queued and released the moment we are in.
+			escapeArmed = requeueing && (queued || queueMenu || System.currentTimeMillis() < escapeUntil)
+			escapeAt = System.currentTimeMillis() + humanDelay(600L)
 		}
 	}
 
@@ -209,6 +254,10 @@ object KeyCommand : Feature(
 		awaitingConfirm = false
 		escapeScreen = null
 		escapeAt = 0L
+		escapeArmed = false
+		escapeAttempts = 0
+		escapeUntil = 0L
+		queued = false
 		giantSeen = false
 		miniSeen = false
 		seenNames.clear()
@@ -228,6 +277,8 @@ object KeyCommand : Feature(
 		enterDeadline = 0L
 		awaitingConfirm = false
 		loggedScreen = null
+		queued = false
+		escapeAttempts = 0
 		LOGGER.info("[MeowMod] AutoF7: requeue attempt $requeueAttempts")
 		sendRequeueCommand(mc)
 	}
@@ -243,6 +294,8 @@ object KeyCommand : Feature(
 		enterDeadline = 0L
 		awaitingConfirm = false
 		loggedScreen = null
+		queued = false
+		escapeAttempts = 0
 		LOGGER.info("[MeowMod] AutoF7: retry $requeueAttempts ($why)")
 		sendRequeueCommand(mc)
 	}
@@ -252,7 +305,7 @@ object KeyCommand : Feature(
 	private fun sendRequeueCommand(mc: Minecraft) {
 		runCommand(settingF7Command.get())
 		awaitingConfirm = true
-		confirmCooldown = System.currentTimeMillis() + 300L + pingMillis(mc)
+		confirmCooldown = System.currentTimeMillis() + humanDelay(300L + pingMillis(mc))
 	}
 
 	private fun stopRequeue() {
@@ -334,7 +387,39 @@ object KeyCommand : Feature(
 		enterDeadline = System.currentTimeMillis() + ENTER_TIMEOUT
 		// Press ESC shortly after so we don't stay stuck in the menu if it didn't close itself.
 		escapeScreen = container
-		escapeAt = System.currentTimeMillis() + 500L
+		escapeArmed = true
+		escapeAttempts = 0
+		escapeUntil = System.currentTimeMillis() + QUEUE_GRACE
+		escapeAt = System.currentTimeMillis() + humanDelay(500L)
+	}
+
+	// The instance map showing up means the queue was accepted: from then on the entry
+	// message is worth waiting for and the command must not be sent again.
+	private fun noteQueued() {
+		if (queued) return
+		queued = true
+		enterDeadline = System.currentTimeMillis() + QUEUE_TIMEOUT
+		LOGGER.info("[MeowMod] AutoF7: party is queued, waiting for the dungeon entry")
+	}
+
+	// Hypixel swaps the join menu for a map that counts the instance down - "Creating
+	// instance...", "Opening The Catacombs for your party!", "Estimated: N seconds" - which is
+	// both the sign that the party is queued and the menu that has to be closed.
+	private fun isInstanceMap(screen: Screen?): Boolean {
+		val container = screen as? AbstractContainerScreen<*> ?: return false
+		for (slot in container.menu.slots) {
+			val stack = slot.item
+			if (stack.isEmpty) continue
+			if (stack.item != Items.MAP && stack.item != Items.FILLED_MAP) continue
+			val lines = listOf(stack.hoverName.string) + ItemUtils.lore(stack)
+			if (lines.any {
+					it.contains("Creating instance", ignoreCase = true) ||
+						it.contains("Opening The Catacombs", ignoreCase = true) ||
+						it.contains("Estimated:", ignoreCase = true)
+				}
+			) return true
+		}
+		return false
 	}
 
 	private fun runCommand(raw: String) {

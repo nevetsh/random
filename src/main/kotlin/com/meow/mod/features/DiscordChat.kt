@@ -26,7 +26,7 @@ import java.util.concurrent.Executors
 // Incoming: the channel is polled over REST and new messages are shown in chat.
 object DiscordChat : Feature(
 	"discordChat",
-	"Relays your Minecraft chat to a Discord channel and shows Discord messages in chat (needs a bot token).",
+	"Relays chat to and from a Discord channel (needs a bot token).",
 	subcategory = "Discord Chat",
 	displayName = "Discord Chat",
 	enabledByDefault = true

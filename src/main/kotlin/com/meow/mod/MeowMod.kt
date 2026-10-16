@@ -15,6 +15,7 @@ import com.meow.mod.features.Feature
 import com.meow.mod.features.HideFromServers
 import com.meow.mod.features.KeyCommand
 import com.meow.mod.features.ModUpdater
+import com.meow.mod.features.NoInteract
 import com.meow.mod.features.SkipCommandConfirm
 import com.meow.mod.features.TriggerBot
 import com.meow.mod.features.WorldScanner
@@ -25,13 +26,13 @@ import net.minecraft.client.Minecraft
 
 object MeowMod : ClientModInitializer {
 	const val MOD_ID = "meowmod"
-	const val VERSION = "1.3.0"
+	const val VERSION = "1.4.0"
 
 	private val allFeatures: List<Feature> = listOf(
 		HideFromServers, AutoCombine, ModUpdater,
 		AutoHarp, AutoExperiments, TriggerBot, WorldScanner,
 		KeyCommand, CustomName, DiscordChat, SkipCommandConfirm,
-		AutoAuction, AutoBz
+		AutoAuction, AutoBz, NoInteract
 	)
 
 	override fun onInitializeClient() {

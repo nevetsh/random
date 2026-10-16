@@ -1,10 +1,12 @@
 package com.meow.mod.mixin;
 
 import com.meow.mod.features.HideFromServers;
+import com.meow.mod.features.NoInteract;
 import io.netty.channel.ChannelFutureListener;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.network.protocol.common.custom.BrandPayload;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
@@ -61,5 +63,24 @@ public class ConnectionMixin {
 			LOGGER.info("[MeowMod] Blocked outbound mod payload: {}", id);
 			ci.cancel();
 		}
+	}
+
+	// No Interact: the block interaction the client sends right after a pearl clicks a
+	// block it should not use is dropped here, before it leaves the client.
+	@Inject(
+		method = "sendPacket",
+		at = @At("HEAD"),
+		cancellable = true
+	)
+	private void meowmod$cancelBlockInteract(
+		Packet<?> packet,
+		ChannelFutureListener channelFutureListener,
+		boolean flush,
+		CallbackInfo ci
+	) {
+		if (!(packet instanceof ServerboundUseItemOnPacket)) return;
+		if (!NoInteract.INSTANCE.shouldCancelPacket()) return;
+		LOGGER.info("[MeowMod] No Interact: dropped the block interaction");
+		ci.cancel();
 	}
 }

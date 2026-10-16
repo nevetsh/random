@@ -1,10 +1,14 @@
 package com.meow.mod.features
 
 import com.meow.mod.Access
+import com.meow.mod.api.ChatUtils
+import com.meow.mod.api.ClickWait
 import com.meow.mod.api.ScreenUtils
+import com.meow.mod.api.humanDelay
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import org.slf4j.LoggerFactory
 
@@ -19,9 +23,14 @@ import org.slf4j.LoggerFactory
 //
 // Detection is by item + tooltip name rather than menu title, so it keeps working if
 // Hypixel renames the menus.
+//
+// The picker is waited for rather than timed: the menu the clock was clicked in is remembered
+// (see ClickWait), so while it is still up unchanged the picker has not opened and nothing is
+// picked in it - and if that click was lost, the clock is pressed again rather than sitting
+// there until a timer runs out.
 object AutoAuction : Feature(
 	"autoAuction",
-	"Sets your auction listing duration: opens the duration picker (the clock in the create-auction menu) and picks the configured option (default \"2 Days\").",
+	"Sets your auction duration (default \"2 Days\") by picking it in the picker.",
 	subcategory = "Auto Auction",
 	displayName = "Auto Auction",
 	enabledByDefault = true
@@ -48,8 +57,11 @@ object AutoAuction : Feature(
 
 	private var initialized = false
 	private var lastClick = 0L
+
+	// How long to wait before the next click, rolled once when the last one happened.
+	private var nextDelay = 0L
+	private val clickWait = ClickWait(CLICK_RETRY_MS, CLICK_RETRIES)
 	private var pickedClock = false
-	private var clockAt = 0L
 	private var armed = false
 	private var armedAt = 0L
 
@@ -81,8 +93,9 @@ object AutoAuction : Feature(
 
 	private fun reset() {
 		lastClick = 0L
+		nextDelay = 0L
 		pickedClock = false
-		clockAt = 0L
+		clickWait.reset()
 		armed = false
 		armedAt = 0L
 	}
@@ -103,32 +116,44 @@ object AutoAuction : Feature(
 			reset()
 			return
 		}
-		if (now - lastClick < delayData.get().toLong()) return
+		if (now - lastClick < nextDelay) return
 
 		val items = screen.menu.items
 		val wanted = durationData.get().trim()
 
+		val signature = ScreenUtils.signature(screen)
+
 		if (pickedClock) {
-			// We opened the picker, so look for the duration item now.
-			if (System.currentTimeMillis() - clockAt > PICKER_TIMEOUT) {
-				reset()
+			// The picker is what is being waited for, not a timer: while the menu has not changed
+			// since the clock was clicked the picker has not opened, so nothing is picked in the
+			// menu that is on screen, and the clock is pressed again after a moment in case that
+			// click was lost.
+			val option = pickerSlot(items, wanted)
+			if (option == null) {
+				if (clickWait.retryDue(signature)) {
+					val again = clockSlot(items)
+					if (again != null) {
+						LOGGER.info("[MeowMod] AutoAuction: the duration picker has not opened, clicking the clock again")
+						click(again)
+						return
+					}
+				}
+				if (clickWait.since() > PICKER_TIMEOUT) {
+					val why = if (clickWait.unanswered(signature)) "the duration picker never opened"
+					else "the picker has no \"$wanted\" option"
+					LOGGER.warn("[MeowMod] AutoAuction: giving up - $why")
+					ChatUtils.sendMessage("&cCouldn't set the auction duration: $why. Check the name in &f/mm&c.", true)
+					reset()
+				}
 				return
 			}
-			val slot = items.indices.firstOrNull { i ->
-				val stack = items[i]
-				stack.item == Items.DYED_TERRACOTTA.white() &&
-					stack.hoverName.string.contains(wanted, ignoreCase = true)
-			} ?: return
-			LOGGER.info("[MeowMod] AutoAuction: picking \"$wanted\" at slot $slot")
-			click(slot)
+			LOGGER.info("[MeowMod] AutoAuction: picking \"$wanted\" at slot $option")
+			click(option)
 			reset()
 			return
 		}
 
-		val clock = items.indices.firstOrNull { i ->
-			val stack = items[i]
-			stack.item == Items.CLOCK && stack.hoverName.string.contains("duration", ignoreCase = true)
-		} ?: return
+		val clock = clockSlot(items) ?: return
 
 		// Already on the wanted duration, so there is nothing to change.
 		if (items[clock].hoverName.string.contains(wanted, ignoreCase = true)) return
@@ -136,17 +161,38 @@ object AutoAuction : Feature(
 		LOGGER.info("[MeowMod] AutoAuction: opening the duration picker (slot $clock, target \"$wanted\")")
 		click(clock)
 		pickedClock = true
-		clockAt = System.currentTimeMillis()
 	}
+
+	// The clock in the create-auction menu, whose tooltip is the listing duration.
+	private fun clockSlot(items: List<ItemStack>): Int? =
+		items.indices.firstOrNull { i ->
+			val stack = items[i]
+			stack.item == Items.CLOCK && stack.hoverName.string.contains("duration", ignoreCase = true)
+		}
+
+	// The duration option in the picker: one white terracotta per length.
+	private fun pickerSlot(items: List<ItemStack>, wanted: String): Int? =
+		items.indices.firstOrNull { i ->
+			val stack = items[i]
+			stack.item == Items.DYED_TERRACOTTA.white() &&
+				stack.hoverName.string.contains(wanted, ignoreCase = true)
+		}
 
 	private fun click(slot: Int) {
+		// The menu this click was made in, so that the wait for the picker can be a wait for the
+		// menu to actually change rather than a pause.
+		clickWait.clicked(ScreenUtils.signature())
 		ScreenUtils.click(slot, false)
 		lastClick = System.currentTimeMillis()
+		nextDelay = humanDelay(delayData.get().toLong())
 	}
 
-	// How long the module stays armed after the "Create Auction" click, and how long it
-	// waits for the duration picker to appear after clicking the clock.
+	// How long the module stays armed after the "Create Auction" click, how long it waits for
+	// the duration picker to appear once the clock has been clicked, and how soon a click that
+	// changed nothing is pressed again.
 	private const val ARM_TIMEOUT = 10000L
 	private const val PICKER_TIMEOUT = 5000L
+	private const val CLICK_RETRY_MS = 1200L
+	private const val CLICK_RETRIES = 2
 	private const val CREATE_AUCTION = "create auction"
 }

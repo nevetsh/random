@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object ModUpdater : Feature(
 	"modUpdater",
-	"Checks GitHub for a newer MeowMod build, downloads it, swaps out the old jar and restarts the client to apply it.",
+	"Downloads a newer build from GitHub and restarts to apply it.",
 	subcategory = "General",
 	displayName = "Auto Updater",
 	enabledByDefault = true
@@ -31,7 +31,7 @@ object ModUpdater : Feature(
 	private val SETTING_AUTO_RESTART = addSwitch(
 		"autoRestart",
 		true,
-		"Restart the client automatically once an update has been downloaded and staged.",
+		"Restart the client once an update has been downloaded.",
 		"Auto Restart"
 	)
 

@@ -3,7 +3,9 @@ package com.meow.mod.features
 import com.meow.mod.api.ChatUtils
 import com.meow.mod.api.ItemUtils
 import com.meow.mod.api.ScreenUtils
+import com.meow.mod.api.humanDelay
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.component.DataComponents
@@ -16,7 +18,7 @@ import kotlin.jvm.optionals.getOrNull
 
 object AutoCombine : Feature(
 	"autoCombine",
-	"Combines specific enchanted books to their max level (the enchant list is set by the mod)",
+	"Combines set enchanted books to their max level.",
 	subcategory = "Auto Combine",
 	displayName = "Auto Combine",
 	enabledByDefault = true
@@ -31,7 +33,7 @@ object AutoCombine : Feature(
 	private val SETTING_FORCE_ONLY = addSwitch(
 		"forceAcceptOnly",
 		false,
-		"Forces the auto combiner to only click on anvil/sign instead of doing it entirely",
+		"Only click the anvil instead of doing the whole combine.",
 		"Force Click Only"
 	)
 	private val books = mapOf(
@@ -69,10 +71,22 @@ object AutoCombine : Feature(
 	)
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 
+	// The server refuses clicks it thinks are too fast with "Whoa! Slow down there!", and the
+	// click it refused is the one that would have taken the combined book. When that arrives the
+	// anvil button is pressed again instead of leaving the book sitting in the menu.
+	private val RATE_LIMIT = Regex("slow down there", RegexOption.IGNORE_CASE)
+	private var refusedAt = 0L
+
+	@Volatile
+	private var initialized = false
+
 	private val data = CopyOnWriteArrayList<BookSlot>()
 	private val sortedData = ConcurrentHashMap<String, MutableList<BookSlot>>()
 	private var currentEnchant: String? = null
 	private var lastClick = -1L
+
+	// How long to wait after a click before the next one, rolled once per click.
+	private var nextDelay = 0L
 	private var lastProgress = System.currentTimeMillis()
 	private val stash = mutableListOf<String>()
 	private var lastInv = MutableList<ItemStack?>(90) { null }
@@ -84,6 +98,11 @@ object AutoCombine : Feature(
 	data class BookSlot(val slot: Int, val enchantName: String, val level: Int, val uuid: String)
 
 	fun initialize() {
+		if (initialized) return
+		initialized = true
+		// Hypixel sends the refusal on the chat channel, so that is where it is picked up.
+		ClientReceiveMessageEvents.GAME.register { message, _ -> onChatMessage(message.string) }
+		ClientReceiveMessageEvents.CHAT.register { message, _, _, _, _ -> onChatMessage(message.string) }
 		ClientTickEvents.END_CLIENT_TICK.register {
 			if (!enabled) return@register
 			val container = container()
@@ -104,8 +123,16 @@ object AutoCombine : Feature(
 
 	override fun onDisable() {
 		enabled = false
+		refusedAt = 0L
 		reset()
 		blocked.clear()
+	}
+
+	private fun onChatMessage(text: String) {
+		if (!enabled) return
+		if (!RATE_LIMIT.containsMatchIn(text)) return
+		refusedAt = System.currentTimeMillis()
+		LOGGER.info("[MeowMod] AutoCombine: the server refused a click (\"${text.trim()}\")")
 	}
 
 	private fun onContainerTick(container: AbstractContainerScreen<*>) {
@@ -130,10 +157,24 @@ object AutoCombine : Feature(
 			recover(container)
 			return
 		}
+
+		// A click the server refused has not happened at all, so the book it was meant to take is
+		// still in the anvil and the button has to be pressed again. The refusal is cleared here,
+		// so one warning means one extra press rather than a stream of them, and it is pressed as
+		// soon as the menu shows something to collect, since the refusal can land before the
+		// result is on screen. The stash is left alone: the pair it describes is still in the anvil.
+		if (refusedAt != 0L && System.currentTimeMillis() - refusedAt <= REFUSAL_GRACE && (isEnchanted == true || isSign)) {
+			LOGGER.info("[MeowMod] AutoCombine: pressing the anvil button again to take the book the server refused")
+			markClick()
+			nextDelay += REFUSAL_PAUSE
+			refusedAt = 0L
+			ScreenUtils.click(22, false)
+			return
+		}
 		if (SETTING_FORCE_ONLY.get()) {
 			if (!canClick()) return
 			if (isEnchanted == true || isSign) {
-				lastClick = System.currentTimeMillis()
+				markClick()
 				ScreenUtils.click(22, false)
 			}
 			return
@@ -150,7 +191,7 @@ object AutoCombine : Feature(
 				reset()
 				return
 			}
-			lastClick = System.currentTimeMillis()
+			markClick()
 			ScreenUtils.click(22, false)
 			if (isSign) stash.clear()
 			return
@@ -184,7 +225,7 @@ object AutoCombine : Feature(
 				if (currentEnchant != "$enchantName:$level") return@forEach
 				if (!canClick() || stash.size == 2) return@forEach
 
-				lastClick = System.currentTimeMillis()
+				markClick()
 				ScreenUtils.click(it.slot, true)
 				if (!stash.contains(it.uuid)) stash.add(it.uuid)
 				v.remove(it)
@@ -231,11 +272,23 @@ object AutoCombine : Feature(
 		sortedData.entries.forEach { (k, v) ->
 			if (v.distinctBy { it.uuid }.size < 2 && k != inFlight) sortedData.remove(k)
 		}
-		lastClick = System.currentTimeMillis()
+		markClick()
 	}
 
 	private fun canClick(): Boolean =
-		lastClick == -1L || System.currentTimeMillis() - lastClick > SETTING_DELAY.get()
+		lastClick == -1L || System.currentTimeMillis() - lastClick > nextDelay
+
+	// Every click rolls the wait until the next one, so the pacing varies the way a hand
+	// rather than a metronome would.
+	private fun markClick() {
+		lastClick = System.currentTimeMillis()
+		nextDelay = humanDelay(SETTING_DELAY.get().toLong())
+	}
+
+	// How long after a refusal the anvil button is still worth pressing again, and how much
+	// extra wait a refused click adds before the next one.
+	private const val REFUSAL_GRACE = 4000L
+	private const val REFUSAL_PAUSE = 1200L
 
 	private fun reset(full: Boolean = true) {
 		data.clear()
@@ -254,7 +307,7 @@ object AutoCombine : Feature(
 		reset()
 		lastInv = MutableList<ItemStack?>(90) { null }
 		lastProgress = System.currentTimeMillis()
-		lastClick = System.currentTimeMillis()
+		markClick()
 	}
 
 	private fun container(): AbstractContainerScreen<*>? =

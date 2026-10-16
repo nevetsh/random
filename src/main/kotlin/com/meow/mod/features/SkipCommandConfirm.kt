@@ -10,7 +10,7 @@ import com.meow.mod.Access
 // still behave normally.
 object SkipCommandConfirm : Feature(
 	"skipCommandConfirm",
-	"Skips the \"Confirm Command Execution\" popup for commands the client does not recognise, e.g. SkyBlock commands clicked in chat.",
+	"Skips the confirm popup for commands the client doesn't know.",
 	subcategory = "Command QoL",
 	displayName = "Skip Command Confirmation",
 	enabledByDefault = true

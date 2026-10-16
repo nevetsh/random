@@ -1,11 +1,14 @@
 package com.meow.mod.features
 
+import com.meow.mod.api.ClickWait
 import com.meow.mod.api.ScreenUtils
+import com.meow.mod.api.humanDelay
 import com.meow.mod.api.noControlCodes
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.world.item.Items
+import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 
 // Ported from OdinClient (skies-starred/OdinClient, BSD-3-Clause)
@@ -36,9 +39,29 @@ object AutoExperiments : Feature(
 		"getMaxXp", false,
 		"Solve Chronomatron to 15 and Ultrasequencer to 20 for max XP.", "Get Max XP"
 	)
+	// Off by default: the module's own pacing is the ported OdinClient behaviour and it is left
+	// exactly as it is. This only adds a second opinion on top of it for a slow connection.
+	private val verifyClicks = addSwitch(
+		"verifyClicks",
+		false,
+		"Wait for the game to answer a click before the next. Off: original pacing.",
+		"Wait For Click To Land"
+	)
+
+	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 
 	private var handler: ExperimentHandler? = null
 	private var lastClick: Long = 0
+
+	// Used by the "Wait For Click To Land" option: the menu each click was made in, so the next
+	// click can wait for that menu to change - and in these experiments that change is the game
+	// saying it took the click. No retry is asked of it: sending the same block twice could be
+	// read as a wrong answer, so a click is never repeated here.
+	private val clickWait = ClickWait(0L, 0)
+	private var stallWarned = false
+
+	// How long to wait before the next click, rolled once when the last one happened.
+	private var nextDelay = 0L
 
 	@Volatile
 	private var enabled = false
@@ -70,29 +93,75 @@ object AutoExperiments : Feature(
 				else -> null
 			}
 			handler = current
+			// A new experiment is a new menu, so it starts with nothing to wait on.
+			resetClicks()
 			if (current == null) return
 		} else if (!title.startsWith("Chronomatron (") && !title.startsWith("Ultrasequencer (")) {
 			handler = null
+			resetClicks()
 			return
 		}
 
 		current.onSlotUpdate(screen)
 
+		// Optional second opinion on the pacing: wait for the game to answer the last click before
+		// sending the next one. A click is answered by the menu changing - the watched block losing
+		// its glint, the center item turning from the clock into the lit block - so waiting on that
+		// instead of on the delay is what keeps a slow tick from pushing the next step of the
+		// sequence into a menu that has not caught up yet. With the option off, nothing here runs
+		// and the ported pacing is untouched.
+		var answered = true
+		if (verifyClicks.get()) {
+			val signature = ScreenUtils.signature(screen)
+			answered = !clickWait.unanswered(signature)
+			if (!answered) {
+				val waited = clickWait.since()
+				if (!stallWarned && waited > STALL_WARN_MS) {
+					stallWarned = true
+					LOGGER.warn("[MeowMod] AutoExperiments: nothing has changed since the last click (${waited}ms) in \"$title\"")
+				}
+				// An answer that never comes must not freeze the experiment for good: after a long
+				// enough wait the sequence is allowed to carry on, since a late click is better than
+				// no experiment at all.
+				if (waited > STALL_RELEASE_MS) {
+					LOGGER.warn("[MeowMod] AutoExperiments: carrying on without an answer (${waited}ms)")
+					resetClicks()
+					answered = true
+				}
+			}
+		}
+
 		val now = System.currentTimeMillis()
-		if (now - lastClick >= delay()) {
+		if (answered && now - lastClick >= nextDelay) {
 			current.nextClick()?.let { slotId ->
 				ScreenUtils.click(slotId, button = "MIDDLE")
+				if (verifyClicks.get()) clickWait.clicked(ScreenUtils.signature(screen))
+				stallWarned = false
 				lastClick = now
+				nextDelay = nextWait()
 			}
 		}
 
 		if (current.shouldClose(autoClose.get())) {
 			minecraft.player?.closeContainer()
 			handler = null
+			resetClicks()
 		}
 	}
 
-	private fun delay(): Long = (clickDelay.get() + (0..delayVariety.get().toInt()).random()).toLong()
+	// The configured click delay plus its own variety, with the human wobble on top.
+	private fun nextWait(): Long =
+		humanDelay((clickDelay.get() + (0..delayVariety.get().toInt()).random()).toLong())
+
+	// How long a click is waited on before the wait is logged, and how long before the sequence
+	// is allowed past it.
+	private const val STALL_WARN_MS = 2500L
+	private const val STALL_RELEASE_MS = 6000L
+
+	private fun resetClicks() {
+		clickWait.reset()
+		stallWarned = false
+	}
 
 	private abstract class ExperimentHandler {
 		protected var clicks = 0
@@ -180,10 +249,13 @@ object AutoExperiments : Feature(
 	override fun onEnable() {
 		enabled = true
 		lastClick = 0
+		nextDelay = 0L
+		resetClicks()
 	}
 
 	override fun onDisable() {
 		enabled = false
 		handler = null
+		resetClicks()
 	}
 }

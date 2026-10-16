@@ -2,7 +2,7 @@ package com.meow.mod.features
 
 object HideFromServers : Feature(
 	"hideFromServers",
-	"Spoofs your client brand to 'vanilla' and blocks every outbound mod payload (any non-minecraft channel), so servers can't tell which mods you have.",
+	"Hides your mods: vanilla client brand, no mod payloads sent.",
 	subcategory = "General",
 	displayName = "Hide Mods From Servers",
 	enabledByDefault = true

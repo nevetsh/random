@@ -10,7 +10,7 @@ import net.minecraft.util.FormattedCharSequence
 
 object CustomName : Feature(
 	"customName",
-	"Replaces your username with a custom name across all displayed text, and redirects commands typed with the custom name to your real name.",
+	"Shows a custom name instead of yours, and redirects those commands.",
 	subcategory = "Custom Name",
 	displayName = "Custom Name",
 	enabledByDefault = true
@@ -18,7 +18,7 @@ object CustomName : Feature(
 	private val settingName = addText(
 		"name",
 		"femboy",
-		"Shown instead of your real username in chat/display and used to redirect commands.",
+		"Shown instead of your username; commands typed with it are redirected.",
 		"Name"
 	)
 

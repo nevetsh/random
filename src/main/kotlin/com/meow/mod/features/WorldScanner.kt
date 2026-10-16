@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 // Ported from OdinClient (skies-starred/OdinClient, BSD-3-Clause)
 object WorldScanner : Feature(
 	"worldScanner",
-	"Scans and highlights structures in the Crystal Hollows (crystals, mob spots, grottos, dragon nest, worm fishing).",
+	"Highlights Crystal Hollows structures: crystals, mob spots, grottos.",
 	subcategory = "World Scanner",
 	displayName = "World Scanner",
 	enabledByDefault = true

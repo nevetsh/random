@@ -1,6 +1,7 @@
 package com.meow.mod.features
 
 import com.meow.mod.api.PlayerUtils
+import com.meow.mod.api.humanDelay
 import com.meow.mod.api.noControlCodes
 import com.meow.mod.events.MeowEvents
 import com.meow.mod.skyblock.DungeonUtils
@@ -42,8 +43,16 @@ object TriggerBot : Feature(
 		"The delay between each secret click.", "Delay"
 	)
 
+	// Cooldown between crystal clicks, before its human wobble.
+	private const val CRYSTAL_DELAY = 500L
+
 	private var click = 0L
 	private var click0 = 0L
+
+	// The waits until the next crystal click and the next secret click, rolled once each
+	// time one happens.
+	private var crystalWait = 0L
+	private var secretWait = 0L
 	private val clicked = mutableMapOf<BlockPos, Long>()
 
 	@Volatile
@@ -69,7 +78,7 @@ object TriggerBot : Feature(
 	private fun crystalTick(minecraft: Minecraft) {
 		if (!DungeonUtils.inBoss) return
 		if (DungeonUtils.getF7Phase() != M7Phases.P1) return
-		if (System.currentTimeMillis() - click < 500) return
+		if (System.currentTimeMillis() - click < crystalWait) return
 
 		val hit = minecraft.hitResult ?: return
 		if (hit.type != HitResult.Type.ENTITY) return
@@ -81,6 +90,7 @@ object TriggerBot : Feature(
 		if (take.get() && entity is EndCrystal) {
 			PlayerUtils.rightClick()
 			click = System.currentTimeMillis()
+			crystalWait = humanDelay(CRYSTAL_DELAY)
 			return
 		}
 
@@ -90,6 +100,7 @@ object TriggerBot : Feature(
 
 		PlayerUtils.rightClick()
 		click = System.currentTimeMillis()
+		crystalWait = humanDelay(CRYSTAL_DELAY)
 	}
 
 	private fun secretTick(minecraft: Minecraft) {
@@ -100,7 +111,7 @@ object TriggerBot : Feature(
 		val now = System.currentTimeMillis()
 		clicked.entries.removeIf { it.value + 1000L <= now }
 
-		if (now - click0 < delay.get().toLong()) return
+		if (now - click0 < secretWait) return
 
 		val hit = minecraft.hitResult ?: return
 		if (hit.type != HitResult.Type.BLOCK) return
@@ -114,6 +125,7 @@ object TriggerBot : Feature(
 
 		PlayerUtils.rightClick()
 		click0 = now
+		secretWait = humanDelay(delay.get().toLong())
 		clicked[pos] = now
 	}
 
