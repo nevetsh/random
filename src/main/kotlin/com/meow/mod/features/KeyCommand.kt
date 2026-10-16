@@ -7,6 +7,7 @@ import com.meow.mod.skyblock.DungeonUtils
 import com.meow.mod.ui.KeybindsScreen
 import com.mojang.blaze3d.platform.InputConstants
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -47,7 +48,7 @@ object KeyCommand : Feature(
 	private val settingAutoF7 = addSwitch(
 		"autoF7",
 		true,
-		"Once the Blood room Giant and miniboss are killed, run the Auto F7 command and confirm the join menu.",
+		"Once the Blood room Giant and miniboss are killed, run the Auto F7 command and confirm the join menu. If the dungeon entry message never arrives it sends the command and clicks again; two ESC presses from you stop it.",
 		"Auto F7"
 	)
 
@@ -65,6 +66,11 @@ object KeyCommand : Feature(
 
 	private val wasDown = HashMap<Int, Boolean>()
 
+	// How long to wait for the dungeon entry message after clicking join, and how many
+	// times the requeue may be retried before we give up.
+	private const val ENTER_TIMEOUT = 5000L
+	private const val MAX_REQUEUE_ATTEMPTS = 5
+
 	private val giantNames = listOf("giant", "bigfoot", "l.a.s.r")
 	private val miniNames = listOf("bonzo", "scarf", "spirit bear", "livid")
 
@@ -79,6 +85,16 @@ object KeyCommand : Feature(
 	private val seenNames = HashSet<String>()
 	private var loggedScreen: Any? = null
 
+	// Failsafe state: the requeue only counts as done once Hypixel announces that we
+	// entered the dungeon. Until then the command is re-sent and the join icon clicked
+	// again, unless the player backs out themselves (two ESC presses).
+	private val enteredPattern = Regex("entered The Catacombs", RegexOption.IGNORE_CASE)
+	private var requeueing = false
+	private var requeueAttempts = 0
+	private var enterDeadline = 0L
+	private var escapePresses = 0
+	private var escapeDown = false
+
 	init {
 		bindsData.onChange { parse(it) }
 		parse(bindsData.get())
@@ -87,6 +103,8 @@ object KeyCommand : Feature(
 	fun initialize() {
 		ClientTickEvents.END_CLIENT_TICK.register { tick() }
 		MeowEvents.onWorldLoad { resetAutoF7() }
+		ClientReceiveMessageEvents.GAME.register { message, _ -> onGameMessage(message.string) }
+		ClientReceiveMessageEvents.CHAT.register { message, _, _, _, _ -> onGameMessage(message.string) }
 	}
 
 	override fun onEnable() {
@@ -122,18 +140,22 @@ object KeyCommand : Feature(
 
 		if (settingAutoF7.get() && !triggered) scanBloodMobs(mc)
 
+		if (requeueing) trackPlayerEscape(mc)
+
 		if (pendingTrigger) {
 			pendingTrigger = false
 			loggedScreen = null
-			runCommand(settingF7Command.get())
-			awaitingConfirm = true
-			// Give the join menu time to render before we look for it / click.
-			// Scale with ping so high-latency players wait long enough (300-500ms).
-			confirmCooldown = System.currentTimeMillis() + 300L + pingMillis(mc)
+			startRequeue(mc)
 		}
 
 		if (awaitingConfirm && System.currentTimeMillis() >= confirmCooldown) {
 			confirmMenu(mc)
+		}
+
+		// The join was clicked but the dungeon entry message never showed up, so the
+		// requeue did not take: send the command and click the icon again.
+		if (requeueing && !awaitingConfirm && enterDeadline > 0L && System.currentTimeMillis() > enterDeadline) {
+			retryRequeue(mc, "no dungeon entry message")
 		}
 
 		// Once the confirm button has been clicked, close the leftover menu with ESC
@@ -191,12 +213,86 @@ object KeyCommand : Feature(
 		miniSeen = false
 		seenNames.clear()
 		loggedScreen = null
+		requeueing = false
+		requeueAttempts = 0
+		enterDeadline = 0L
+		escapePresses = 0
+		escapeDown = false
+	}
+
+	// Runs the requeue command and arms the confirm click.
+	private fun startRequeue(mc: Minecraft) {
+		requeueing = true
+		requeueAttempts = 1
+		escapePresses = 0
+		enterDeadline = 0L
+		awaitingConfirm = false
+		loggedScreen = null
+		LOGGER.info("[MeowMod] AutoF7: requeue attempt $requeueAttempts")
+		sendRequeueCommand(mc)
+	}
+
+	// Failsafe retry: same as a fresh attempt, but bounded so we never spam forever.
+	private fun retryRequeue(mc: Minecraft, why: String) {
+		if (requeueAttempts >= MAX_REQUEUE_ATTEMPTS) {
+			LOGGER.info("[MeowMod] AutoF7: giving up after $requeueAttempts attempts ($why)")
+			stopRequeue()
+			return
+		}
+		requeueAttempts++
+		enterDeadline = 0L
+		awaitingConfirm = false
+		loggedScreen = null
+		LOGGER.info("[MeowMod] AutoF7: retry $requeueAttempts ($why)")
+		sendRequeueCommand(mc)
+	}
+
+	// Sends the requeue command and waits for the join menu to appear. The delay scales
+	// with ping (300-500ms) so the menu has time to render before we look for the icon.
+	private fun sendRequeueCommand(mc: Minecraft) {
+		runCommand(settingF7Command.get())
+		awaitingConfirm = true
+		confirmCooldown = System.currentTimeMillis() + 300L + pingMillis(mc)
+	}
+
+	private fun stopRequeue() {
+		requeueing = false
+		awaitingConfirm = false
+		enterDeadline = 0L
+		escapePresses = 0
+	}
+
+	// Two real ESC presses while the requeue is in flight mean the player closed the
+	// menu themselves, so we stop sending the command. Our own programmatic onClose()
+	// does not create a key press, so it never counts here.
+	private fun trackPlayerEscape(mc: Minecraft) {
+		val down = InputConstants.isKeyDown(mc.getWindow(), InputConstants.KEY_ESCAPE)
+		if (down && !escapeDown) {
+			escapePresses++
+			if (escapePresses >= 2) {
+				LOGGER.info("[MeowMod] AutoF7: player pressed ESC twice, stopping requeue")
+				stopRequeue()
+			}
+		}
+		escapeDown = down
+	}
+
+	// Hypixel announces "<name> entered The Catacombs, Floor VII!" once the requeue
+	// actually worked, so that is our success signal.
+	private fun onGameMessage(text: String) {
+		if (!enabled || !requeueing) return
+		if (!enteredPattern.containsMatchIn(text)) return
+		val name = Minecraft.getInstance().user.name
+		if (name.isNotEmpty() && !text.contains(name)) return
+		LOGGER.info("[MeowMod] AutoF7: requeue confirmed (\"$text\")")
+		stopRequeue()
 	}
 
 	private fun confirmMenu(mc: Minecraft) {
 		if (System.currentTimeMillis() > confirmCooldown + 6000L) {
 			LOGGER.info("[MeowMod] AutoF7: timed out waiting for join menu")
 			awaitingConfirm = false
+			retryRequeue(mc, "join menu never appeared")
 			return
 		}
 		val screen = mc.gui.screen() ?: return
@@ -233,6 +329,9 @@ object KeyCommand : Feature(
 		mc.gameMode?.handleContainerInput(menu.containerId, target, 0, ContainerInput.PICKUP, player)
 		LOGGER.info("[MeowMod] AutoF7: clicked join button at slot $target")
 		awaitingConfirm = false
+		// Wait for Hypixel's "entered The Catacombs" message; if it never comes the
+		// requeue is retried (see tick()).
+		enterDeadline = System.currentTimeMillis() + ENTER_TIMEOUT
 		// Press ESC shortly after so we don't stay stuck in the menu if it didn't close itself.
 		escapeScreen = container
 		escapeAt = System.currentTimeMillis() + 500L

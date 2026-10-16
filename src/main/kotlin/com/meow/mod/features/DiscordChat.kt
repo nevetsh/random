@@ -180,7 +180,8 @@ object DiscordChat : Feature(
 			source.sendFeedback(ChatUtils.literal("&8[&9Discord&8] &7No bot token/channel set."))
 		} else {
 			relay("${playerName()}: $message")
-			source.sendFeedback(ChatUtils.literal("&8[&9Discord&8] &7Sent: &f$message"))
+			// Mirror what actually landed in Discord instead of a generic "Sent:" line.
+			source.sendFeedback(ChatUtils.literal("&8[&9Discord&8] &b${playerName()}&7: &f$message"))
 		}
 	}
 

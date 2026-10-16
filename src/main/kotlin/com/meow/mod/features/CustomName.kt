@@ -1,5 +1,6 @@
 package com.meow.mod.features
 
+import com.meow.mod.Access
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.MutableComponent
@@ -31,7 +32,7 @@ object CustomName : Feature(
 
 	@JvmStatic
 	fun isActive(): Boolean {
-		if (!configSwitch.get()) return false
+		if (!configSwitch.get() || !Access.authorized) return false
 		val custom = customName()
 		if (custom.isEmpty()) return false
 		val real = realName()

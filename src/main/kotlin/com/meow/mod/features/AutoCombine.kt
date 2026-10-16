@@ -157,9 +157,14 @@ object AutoCombine : Feature(
 		}
 		if (data.isEmpty() || stash.size == 2) return
 		if (currentEnchant != null && !sortedData.containsKey(currentEnchant)) {
-			if (stash.isEmpty()) currentEnchant = null
-			else {
-				println("MeowMod\$AutoCombine something broke?")
+			if (stash.isEmpty()) {
+				currentEnchant = null
+			} else {
+				// A book of the current enchant sits in the anvil but its partner is gone,
+				// so this group can never be completed. Put the stashed book back and
+				// rescan instead of spinning on this branch forever.
+				LOGGER.info("[MeowMod] AutoCombine: no partner left for $currentEnchant, returning the stashed book")
+				recover(container)
 				return
 			}
 		}
@@ -218,7 +223,14 @@ object AutoCombine : Feature(
 		}
 
 		data.forEach { sortedData.getOrPut("${it.enchantName}:${it.level}") { mutableListOf() }.add(it) }
-		sortedData.entries.forEach { (k, v) -> if (v.distinctBy { it.uuid }.size < 2) sortedData.remove(k) }
+		// A group needs two distinct books, but a book that is already in the anvil is no longer
+		// in the inventory - so the group we are currently working on looks like a single book
+		// and used to get dropped here, leaving that book stuck in the anvil with no partner to
+		// place next to it. Keep the in-flight group alive until its second book has been placed.
+		val inFlight = currentEnchant.takeIf { stash.isNotEmpty() }
+		sortedData.entries.forEach { (k, v) ->
+			if (v.distinctBy { it.uuid }.size < 2 && k != inFlight) sortedData.remove(k)
+		}
 		lastClick = System.currentTimeMillis()
 	}
 

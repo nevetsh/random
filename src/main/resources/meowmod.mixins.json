@@ -5,7 +5,9 @@
 	"mixins": [
 		"ConnectionMixin",
 		"ChatScreenMixin",
-		"FontMixin"
+		"FontMixin",
+		"CommandConfirmMixin",
+		"ContainerClickMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
