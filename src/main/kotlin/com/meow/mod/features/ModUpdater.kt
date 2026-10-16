@@ -139,9 +139,13 @@ object ModUpdater : Feature(
 	}
 
 	private fun install(gameDir: Path, modsDir: Path, staging: Path, currentJar: File, tag: String) {
-		val safeTag = tag.replace(Regex("[^A-Za-z0-9._-]"), "_")
+		// The client holds its own jar open for as long as it runs, so the swap waits for
+		// this process to exit before it touches the file and only then relaunches. The
+		// leading "v" is dropped from the file name so it matches the release asset.
+		val safeTag = tag.replace(Regex("[^A-Za-z0-9._-]"), "_").removePrefix("v")
 		val newJar = modsDir.resolve("meowmod-$safeTag.jar")
 		val canRestart = SETTING_AUTO_RESTART.get()
+		val pid = ProcessHandle.current().pid()
 		val relaunch = ProcessHandle.current().info().commandLine().orElse(null)
 		val isWindows = System.getProperty("os.name").lowercase().contains("win")
 
@@ -155,23 +159,39 @@ object ModUpdater : Feature(
 		} else ""
 
 		val script = gameDir.resolve(if (isWindows) "meowmod-updater.cmd" else "meowmod-updater.sh")
-		if (isWindows) {
+		if (isWindows) {			// Wait-Process blocks until this client is gone, so nothing here touches the jar
+			// while it is still open. The retry loop is a fallback for a handle that outlives
+			// the process (an antivirus scan), it is bounded so it can never spin, and it
+			// sleeps through PowerShell rather than `timeout`, which a Git install on PATH
+			// shadows with the Unix one. Every line that could print is redirected: the whole
+			// point is that this script stays silent.
 			val content = """
 @echo off
 cd /d "$dir"
-:wait
-del /f /q "$old"
-if exist "$old" ( timeout /t 1 /nobreak >nul & goto wait )
-move /y "$staged" "$target"
+powershell -NoProfile -NonInteractive -Command "Wait-Process -Id $pid -ErrorAction SilentlyContinue" >nul 2>&1
+if not exist "$staged" goto cleanup
+set /a tries=0
+:swap
+del /f /q "$old" >nul 2>&1
+if not exist "$old" goto install
+set /a tries+=1
+if %tries% GEQ 30 goto cleanup
+powershell -NoProfile -NonInteractive -Command "Start-Sleep -Seconds 1" >nul 2>&1
+goto swap
+:install
+move /y "$staged" "$target" >nul 2>&1
 $relaunchLine
-del "%~f0"
+:cleanup
+(goto) 2>nul & del "%~f0" >nul 2>&1
 """.trimIndent().replace("\n", "\r\n")
 			Files.writeString(script, content)
 		} else {
 			val content = """
 #!/bin/sh
 cd "$dir" || exit 1
-while [ -e "$old" ]; do rm -f "$old"; sleep 1; done
+while kill -0 $pid 2>/dev/null; do sleep 1; done
+[ -e "$staged" ] || exit 0
+rm -f "$old"
 mv -f "$staged" "$target"
 $relaunchLine
 rm -f "${'$'}0"
@@ -182,7 +202,7 @@ rm -f "${'$'}0"
 
 		try {
 			if (isWindows) {
-				ProcessBuilder("cmd.exe", "/c", "start", "", script.toString()).start()
+				ProcessBuilder("cmd.exe", "/c", "start", "", "/min", script.toString()).start()
 			} else {
 				ProcessBuilder("sh", script.toString()).start()
 			}
