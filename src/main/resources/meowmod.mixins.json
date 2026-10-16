@@ -3,7 +3,9 @@
 	"package": "com.meow.mod.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"ConnectionMixin"
+		"ConnectionMixin",
+		"ChatScreenMixin",
+		"FontMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

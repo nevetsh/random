@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 object ModUpdater : Feature(
 	"modUpdater",
 	"Checks GitHub for a newer MeowMod build, downloads it, swaps out the old jar and restarts the client to apply it.",
-	subcategory = "Updater",
+	subcategory = "General",
 	displayName = "Auto Updater",
 	enabledByDefault = true
 ) {

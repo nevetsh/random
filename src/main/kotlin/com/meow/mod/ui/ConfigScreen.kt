@@ -3,6 +3,8 @@ package com.meow.mod.ui
 import com.meow.mod.MeowMod
 import com.meow.mod.config.Config
 import com.meow.mod.config.ConfigData
+import com.mojang.blaze3d.platform.InputConstants
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.screens.Screen
@@ -17,12 +19,16 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		fun contains(mx: Int, my: Int): Boolean = mx >= x && mx < x + w && my >= y && my < y + h
 	}
 
-	private data class Control(val data: ConfigData<*>, val track: Rect)
+	private data class Control(val data: ConfigData<*>, val track: Rect, val valueRect: Rect? = null)
 
 	private var selected: String = Config.subcategories.firstOrNull() ?: Config.CATEGORY_NAME
 	private var scroll = 0.0
 	private var maxScroll = 0.0
 	private var dragging: ConfigData.Slider? = null
+	private var editing: ConfigData.Slider? = null
+	private var editBuffer: String = ""
+	private var editingText: ConfigData.Text? = null
+	private var textBuffer: String = ""
 
 	private var rows = listOf<Control>()
 	private var closeRect: Rect? = null
@@ -122,6 +128,16 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 
 			val rowX = rightX + 4
 			val rowW = rightW - 8
+
+			val controlW = when (configData) {
+				is ConfigData.FeatureSwitch, is ConfigData.Switch -> 30
+				is ConfigData.Slider -> 104
+				is ConfigData.Text -> minOf(160, rowW / 2) + 6
+				is ConfigData.Button -> 66
+				else -> 0
+			}
+			val textW = (rowW - controlW - 9).coerceAtLeast(0)
+
 			val hovered = mouseX >= rowX && mouseX < rowX + rowW && mouseY >= rowY && mouseY < rowY + rowH
 			if (hovered) {
 				Render2D.argb(graphics, rowX, rowY, rowW, rowH - 2, ColorPalette.argb(ColorPalette.TERTIARY))
@@ -129,12 +145,12 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 			}
 
 			Render2D.text(
-				graphics, configData.displayName, rowX + 5, rowY + 3,
+				graphics, truncate(configData.displayName, textW, 1f), rowX + 5, rowY + 3,
 				ColorPalette.argb(ColorPalette.TEXT), false, 1f
 			)
 			if (configData.description.isNotEmpty()) {
 				Render2D.text(
-					graphics, configData.description, rowX + 5, rowY + 12,
+					graphics, truncate(configData.description, textW, 0.75f), rowX + 5, rowY + 12,
 					ColorPalette.argb(ColorPalette.LIGHT_TEXT), false, 0.75f
 				)
 			}
@@ -154,8 +170,21 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 
 				is ConfigData.Slider -> {
 					val track = Rect(rowX + rowW - 80, rowY + 6, 60, 8)
-					drawSlider(graphics, track, configData)
-					newRows.add(Control(configData, track))
+					val valueRect = drawSlider(graphics, track, configData)
+					newRows.add(Control(configData, track, valueRect))
+				}
+
+				is ConfigData.Text -> {
+					val fieldW = minOf(160, rowW / 2)
+					val field = Rect(rowX + rowW - fieldW - 2, rowY + 4, fieldW, 12)
+					drawTextField(graphics, field, configData)
+					newRows.add(Control(configData, field, field))
+				}
+
+				is ConfigData.Button -> {
+					val btn = Rect(rowX + rowW - 62, rowY + 4, 58, 12)
+					drawButton(graphics, btn, configData.label)
+					newRows.add(Control(configData, btn))
 				}
 
 				else -> {}
@@ -163,6 +192,16 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		}
 		graphics.scissorStack.pop()
 		rows = newRows
+	}
+
+	private fun truncate(text: String, maxPx: Int, scale: Float): String {
+		if (maxPx <= 0) return ""
+		if ((Render2D.width(text) * scale).toInt() <= maxPx) return text
+		val ellipsis = "..."
+		val ellipsisPx = (Render2D.width(ellipsis) * scale).toInt()
+		var end = text.length
+		while (end > 0 && (Render2D.width(text.substring(0, end)) * scale).toInt() + ellipsisPx > maxPx) end--
+		return if (end <= 0) "" else text.substring(0, end) + ellipsis
 	}
 
 	private fun drawSwitch(graphics: GuiGraphicsExtractor, track: Rect, on: Boolean) {
@@ -174,23 +213,59 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		Render2D.rect(graphics, knobX, track.y, knobW, track.h, ColorPalette.TEXT)
 	}
 
-	private fun drawSlider(graphics: GuiGraphicsExtractor, track: Rect, slider: ConfigData.Slider) {
+	private fun drawSlider(graphics: GuiGraphicsExtractor, track: Rect, slider: ConfigData.Slider): Rect {
 		Render2D.rect(graphics, track.x, track.y, track.w, track.h, ColorPalette.TERTIARY)
 		Render2D.outline(graphics, track.x, track.y, track.w, track.h, ColorPalette.argb(ColorPalette.OUTLINE))
 		val progress = ((slider.get() - slider.min) / (slider.max - slider.min)).coerceIn(0.0, 1.0)
 		val filled = (track.w * progress).roundToInt()
 		Render2D.rect(graphics, track.x, track.y, filled, track.h, ColorPalette.ACCENT)
 		Render2D.rect(graphics, track.x + (filled - 1).coerceIn(0, track.w - 2), track.y - 1, 2, track.h + 2, ColorPalette.TEXT)
-		Render2D.text(
-			graphics, slider.get().roundToInt().toString(), track.x + track.w + 3, track.y + 1,
-			ColorPalette.argb(ColorPalette.LIGHT_TEXT), false, 0.9f
-		)
+
+		val editingThis = editing === slider
+		val valueText = if (editingThis) editBuffer + "_" else slider.get().roundToInt().toString()
+		val textX = track.x + track.w + 3
+		val color = if (editingThis) ColorPalette.argb(ColorPalette.ACCENT) else ColorPalette.argb(ColorPalette.LIGHT_TEXT)
+		Render2D.text(graphics, valueText, textX, track.y + 1, color, false, 0.9f)
+
+		val labelWidth = Render2D.width(valueText).coerceAtLeast(Render2D.width(slider.get().roundToInt().toString())).coerceAtLeast(10)
+		return Rect(textX - 3, track.y - 3, labelWidth + 8, track.h + 6)
+	}
+
+	private fun drawTextField(graphics: GuiGraphicsExtractor, rect: Rect, text: ConfigData.Text) {
+		Render2D.rect(graphics, rect.x, rect.y, rect.w, rect.h, ColorPalette.TERTIARY)
+		Render2D.outline(graphics, rect.x, rect.y, rect.w, rect.h, ColorPalette.argb(ColorPalette.OUTLINE))
+		val editingThis = editingText === text
+		val shown = when {
+			editingThis -> textBuffer + "_"
+			text.secret && text.get().isNotEmpty() -> "*".repeat(12)
+			text.get().isEmpty() -> "(empty)"
+			else -> text.get()
+		}
+		val color = if (editingThis) ColorPalette.argb(ColorPalette.ACCENT) else ColorPalette.argb(ColorPalette.LIGHT_TEXT)
+		Render2D.text(graphics, shown, rect.x + 3, rect.y + 2, color, false, 0.85f)
+	}
+
+	private fun drawButton(graphics: GuiGraphicsExtractor, rect: Rect, label: String) {
+		val hover = rect.contains(mouseX, mouseY)
+		Render2D.rect(graphics, rect.x, rect.y, rect.w, rect.h, if (hover) ColorPalette.OUTLINE2 else ColorPalette.TERTIARY)
+		Render2D.outline(graphics, rect.x, rect.y, rect.w, rect.h, ColorPalette.argb(ColorPalette.OUTLINE))
+		val tx = rect.x + (rect.w - Render2D.width(label)) / 2
+		Render2D.text(graphics, label, tx, rect.y + 2, ColorPalette.argb(ColorPalette.TEXT), false, 1f)
 	}
 
 	override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, bl: Boolean): Boolean {
 		val mx = mouseButtonEvent.x.toInt()
 		val my = mouseButtonEvent.y.toInt()
 		if (mouseButtonEvent.button() != 0) return super.mouseClicked(mouseButtonEvent, bl)
+
+		if (editing != null) {
+			val editingControl = rows.firstOrNull { it.data === editing }
+			if (editingControl?.valueRect?.contains(mx, my) != true) commitEdit()
+		}
+		if (editingText != null) {
+			val editingControl = rows.firstOrNull { it.data === editingText }
+			if (editingControl?.valueRect?.contains(mx, my) != true) commitTextEdit()
+		}
 
 		closeRect?.let { if (it.contains(mx, my)) { onClose(); return true } }
 
@@ -207,6 +282,26 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		}
 
 		for (control in rows) {
+			when (val data = control.data) {
+				is ConfigData.Slider -> {
+					if (control.valueRect?.contains(mx, my) == true) {
+						editing = data
+						editBuffer = data.get().roundToInt().toString()
+						return true
+					}
+				}
+
+				is ConfigData.Text -> {
+					if (control.valueRect?.contains(mx, my) == true) {
+						editingText = data
+						textBuffer = if (data.secret) "" else data.get()
+						return true
+					}
+				}
+
+				else -> {}
+			}
+
 			if (!control.track.contains(mx, my)) continue
 			when (val data = control.data) {
 				is ConfigData.Switch -> {
@@ -225,11 +320,30 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 					return true
 				}
 
+				is ConfigData.Button -> {
+					data.action()
+					return true
+				}
+
 				else -> {}
 			}
 		}
 
 		return super.mouseClicked(mouseButtonEvent, bl)
+	}
+
+	private fun commitEdit() {
+		val slider = editing ?: return
+		editBuffer.toDoubleOrNull()?.let { slider.set(it.coerceIn(slider.min, slider.max)) }
+		editing = null
+		editBuffer = ""
+	}
+
+	private fun commitTextEdit() {
+		val text = editingText ?: return
+		if (!text.secret || textBuffer.isNotBlank()) text.set(textBuffer)
+		editingText = null
+		textBuffer = ""
 	}
 
 	override fun mouseDragged(mouseButtonEvent: MouseButtonEvent, d: Double, e: Double): Boolean {
@@ -263,9 +377,84 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
 	}
 
-	override fun charTyped(characterEvent: CharacterEvent): Boolean = super.charTyped(characterEvent)
+	override fun charTyped(characterEvent: CharacterEvent): Boolean {
+		if (editingText != null) {
+			val text = characterEvent.codepointAsString()
+			if (text.length == 1 && text[0].code >= 32) {
+				if (textBuffer.length < (editingText?.maxLength ?: 96)) textBuffer += text[0]
+			}
+			return true
+		}
+		if (editing == null) return super.charTyped(characterEvent)
+		val text = characterEvent.codepointAsString()
+		if (text.length == 1) {
+			val c = text[0]
+			if (c.isDigit() || (c == '.' && !editBuffer.contains('.'))) {
+				if (editBuffer.length < 8) editBuffer += c
+			}
+		}
+		return true
+	}
 
-	override fun keyPressed(keyEvent: KeyEvent): Boolean = super.keyPressed(keyEvent)
+	override fun keyPressed(keyEvent: KeyEvent): Boolean {
+		if (editingText != null) {
+			if (keyEvent.isPaste()) {
+				val clip = Minecraft.getInstance().keyboardHandler.getClipboard()
+				if (clip.isNotEmpty()) {
+					val max = editingText?.maxLength ?: 96
+					textBuffer = (textBuffer + clip.filter { it.code >= 32 }).take(max)
+				}
+				return true
+			}
+			when (keyEvent.key()) {
+				InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
+					commitTextEdit()
+					return true
+				}
+
+				InputConstants.KEY_ESCAPE -> {
+					editingText = null
+					textBuffer = ""
+					return true
+				}
+
+				InputConstants.KEY_BACKSPACE -> {
+					if (textBuffer.isNotEmpty()) textBuffer = textBuffer.dropLast(1)
+					return true
+				}
+
+				InputConstants.KEY_DELETE -> {
+					textBuffer = ""
+					return true
+				}
+			}
+			return true
+		}
+		if (editing == null) return super.keyPressed(keyEvent)
+		when (keyEvent.key()) {
+			InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
+				commitEdit()
+				return true
+			}
+
+			InputConstants.KEY_ESCAPE -> {
+				editing = null
+				editBuffer = ""
+				return true
+			}
+
+			InputConstants.KEY_BACKSPACE -> {
+				if (editBuffer.isNotEmpty()) editBuffer = editBuffer.dropLast(1)
+				return true
+			}
+
+			InputConstants.KEY_DELETE -> {
+				editBuffer = ""
+				return true
+			}
+		}
+		return true
+	}
 
 	override fun isPauseScreen(): Boolean = false
 }

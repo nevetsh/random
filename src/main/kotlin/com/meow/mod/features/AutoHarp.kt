@@ -11,13 +11,23 @@ import net.minecraft.world.item.Items
 object AutoHarp : Feature(
 	"autoHarp",
 	"Tries to do the Harp for you! (clicks the lit quartz block automatically)",
-	subcategory = "Cheats",
-	displayName = "Auto Harp"
+	subcategory = "Auto Harp",
+	displayName = "Auto Harp",
+	enabledByDefault = true
 ) {
+	private val settingDelay = addSlider(
+		"delay",
+		100.0,
+		0.0, 500.0,
+		"Minimum delay in milliseconds between clicks.",
+		"Click Delay (ms)"
+	)
+
 	@Volatile
 	private var enabled = false
 	private var hash = 0
 	private var initialized = false
+	private var lastClick = 0L
 
 	fun initialize() {
 		if (initialized) return
@@ -40,8 +50,15 @@ object AutoHarp : Feature(
 			}
 
 			if (hash == newHash) return@register
+			if (slot == -1) {
+				hash = newHash
+				return@register
+			}
+
+			val now = System.currentTimeMillis()
+			if (now - lastClick < settingDelay.get().toLong()) return@register
 			hash = newHash
-			if (slot == -1) return@register
+			lastClick = now
 
 			ScreenUtils.click(slot, button = "MIDDLE")
 		}
@@ -50,6 +67,7 @@ object AutoHarp : Feature(
 	override fun onEnable() {
 		enabled = true
 		hash = 0
+		lastClick = 0L
 	}
 
 	override fun onDisable() {

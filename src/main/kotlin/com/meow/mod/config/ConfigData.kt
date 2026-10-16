@@ -55,4 +55,23 @@ open class ConfigData<T> @JvmOverloads constructor(
 		description: String = "",
 		parent: FeatureSwitch? = null
 	) : ConfigData<Double>(configName, ConfigType.SLIDER, initial, displayName, description, parent)
+
+	class Text(
+		configName: String,
+		initial: String,
+		displayName: String,
+		description: String = "",
+		parent: FeatureSwitch? = null,
+		val maxLength: Int = 96,
+		val secret: Boolean = false
+	) : ConfigData<String>(configName, ConfigType.TEXT, initial, displayName, description, parent)
+
+	class Button(
+		configName: String,
+		displayName: String,
+		description: String = "",
+		parent: FeatureSwitch? = null,
+		val label: String = "Open",
+		val action: () -> Unit
+	) : ConfigData<Boolean>(configName, ConfigType.BUTTON, false, displayName, description, parent)
 }

@@ -12,11 +12,12 @@ import java.util.concurrent.ConcurrentHashMap
 object AutoExperiments : Feature(
 	"autoExperiments",
 	"Automatically solves the Chronomatron and Ultrasequencer experiments.",
-	subcategory = "Cheats",
-	displayName = "Auto Experiments"
+	subcategory = "Auto Experiments",
+	displayName = "Auto Experiments",
+	enabledByDefault = true
 ) {
 	private val clickDelay = addSlider(
-		"clickDelay", 200.0, 100.0, 1000.0,
+		"clickDelay", 150.0, 100.0, 1000.0,
 		"Time in ms between automatic test clicks.", "Click Delay"
 	)
 	private val delayVariety = addSlider(

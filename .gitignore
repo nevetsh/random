@@ -5,6 +5,8 @@ build/
 out/
 classes/
 
+standalone-autocombine-mod-with-devonian-gui.json
+
 # eclipse
 
 *.launch

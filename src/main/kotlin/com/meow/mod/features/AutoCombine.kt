@@ -9,6 +9,7 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.component.DataComponents
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.jvm.optionals.getOrNull
@@ -16,8 +17,9 @@ import kotlin.jvm.optionals.getOrNull
 object AutoCombine : Feature(
 	"autoCombine",
 	"Combines specific enchanted books to their max level (the enchant list is set by the mod)",
-	subcategory = "AutoCombine",
-	displayName = "Auto Combine"
+	subcategory = "Auto Combine",
+	displayName = "Auto Combine",
+	enabledByDefault = true
 ) {
 	private val SETTING_DELAY = addSlider(
 		"delay",
@@ -65,6 +67,8 @@ object AutoCombine : Feature(
 		"green_thumb" to 5,
 		"infinite_quiver" to 10
 	)
+	private val LOGGER = LoggerFactory.getLogger("MeowMod")
+
 	private val data = CopyOnWriteArrayList<BookSlot>()
 	private val sortedData = ConcurrentHashMap<String, MutableList<BookSlot>>()
 	private var currentEnchant: String? = null
@@ -72,6 +76,7 @@ object AutoCombine : Feature(
 	private var lastProgress = System.currentTimeMillis()
 	private val stash = mutableListOf<String>()
 	private var lastInv = MutableList<ItemStack?>(90) { null }
+	private val blocked = mutableSetOf<String>()
 
 	@Volatile
 	private var enabled = false
@@ -84,6 +89,7 @@ object AutoCombine : Feature(
 			val container = container()
 			if (container == null) {
 				if (data.isNotEmpty()) reset()
+				blocked.clear()
 				return@register
 			}
 			if (container.title.string != "Anvil" || !invLoaded(container) || !canClick()) return@register
@@ -99,6 +105,7 @@ object AutoCombine : Feature(
 	override fun onDisable() {
 		enabled = false
 		reset()
+		blocked.clear()
 	}
 
 	private fun onContainerTick(container: AbstractContainerScreen<*>) {
@@ -114,7 +121,12 @@ object AutoCombine : Feature(
 		val isSign = midItem.item == Items.OAK_SIGN
 
 		if (midItem.item == Items.BARRIER) {
-			ChatUtils.sendMessage("&c[&4Meow&c] &cSeems like the Auto Combine did not get correct books, re-opening cleanly")
+			LOGGER.info(
+				"[MeowMod] AutoCombine BARRIER: cur=$currentEnchant stash=$stash " +
+					"| 29=${describe(items.getOrNull(29))} 33=${describe(items.getOrNull(33))} blocked=$blocked"
+			)
+			ChatUtils.sendMessage("&c[&4Meow&c] &cCan't combine ${currentEnchant ?: "books"} - skipping it")
+			currentEnchant?.let { blocked.add(it) }
 			recover(container)
 			return
 		}
@@ -152,7 +164,8 @@ object AutoCombine : Feature(
 			}
 		}
 
-		sortedData.forEach sort@{ (_, v) ->
+		sortedData.forEach sort@{ (key, v) ->
+			if (key in blocked) return@sort
 			if (currentEnchant == null) currentEnchant = v.firstOrNull()?.let { "${it.enchantName}:${it.level}" }
 
 			v.reversed().forEach {
@@ -240,4 +253,7 @@ object AutoCombine : Feature(
 		val items = inv.menu.items
 		return items.size > 45 && !(items.getOrNull(items.size - 45)?.isEmpty ?: true)
 	}
+
+	private fun describe(stack: ItemStack?): String =
+		if (stack == null || stack.isEmpty) "empty" else "\"${stack.hoverName.string}\""
 }

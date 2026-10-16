@@ -22,8 +22,9 @@ import java.util.concurrent.ConcurrentHashMap
 object WorldScanner : Feature(
 	"worldScanner",
 	"Scans and highlights structures in the Crystal Hollows (crystals, mob spots, grottos, dragon nest, worm fishing).",
-	subcategory = "Cheats",
-	displayName = "World Scanner"
+	subcategory = "World Scanner",
+	displayName = "World Scanner",
+	enabledByDefault = true
 ) {
 	private const val GOLD = 0xFFFFAA00.toInt()
 	private const val GREEN = 0xFF55FF55.toInt()
@@ -40,7 +41,7 @@ object WorldScanner : Feature(
 	private val lavaEsp = addSwitch("lavaEsp", false, "Highlights lava blocks.", "Lava ESP")
 	private val waterEsp = addSwitch("waterEsp", false, "Highlights water blocks.", "Water ESP")
 	private val espRange = addSlider("espRange", 32.0, 8.0, 128.0, "Range for lava and water ESP.", "ESP Range")
-	private val sendCoordsInChat = addSwitch("sendCoordsInChat", true, "Sends coordinates to chat when a structure is found.", "Send Coords in Chat")
+	private val sendCoordsInChat = addSwitch("sendCoordsInChat", false, "Sends coordinates to chat when a structure is found.", "Send Coords in Chat")
 
 	private val waypoints = ConcurrentHashMap<String, WaypointData>()
 	private val scannedChunks = HashSet<Long>()

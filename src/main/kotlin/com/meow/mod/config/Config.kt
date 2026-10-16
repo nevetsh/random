@@ -56,6 +56,8 @@ object Config {
 		when (data.type) {
 			ConfigType.SWITCH -> (data as ConfigData<Boolean>).set(element.asBoolean)
 			ConfigType.SLIDER -> (data as ConfigData<Double>).set(element.asDouble)
+			ConfigType.TEXT -> (data as ConfigData<String>).set(element.asString)
+			ConfigType.BUTTON -> {}
 		}
 	}
 

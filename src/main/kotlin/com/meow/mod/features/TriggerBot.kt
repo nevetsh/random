@@ -17,8 +17,9 @@ import net.minecraft.world.phys.HitResult
 object TriggerBot : Feature(
 	"triggerBot",
 	"Trigger bots for crystals and dungeon secrets.",
-	subcategory = "Cheats",
-	displayName = "Trigger Bot"
+	subcategory = "Trigger Bot",
+	displayName = "Trigger Bot",
+	enabledByDefault = true
 ) {
 	private val crystal = addSwitch(
 		"crystal", false,
@@ -33,7 +34,7 @@ object TriggerBot : Feature(
 		"Places crystals.", "Place"
 	)
 	private val secret = addSwitch(
-		"secret", false,
+		"secret", true,
 		"Automatically clicks secrets.", "Secret"
 	)
 	private val delay = addSlider(

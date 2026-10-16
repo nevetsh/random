@@ -45,6 +45,36 @@ abstract class Feature(
 			configSwitch.subconfigs.add(it)
 		}
 
+	fun addText(
+		configName: String,
+		initial: String,
+		description: String = "",
+		displayName: String,
+		maxLength: Int = 96,
+		secret: Boolean = false,
+		hidden: Boolean = false
+	): ConfigData.Text =
+		ConfigData.Text("${this.configName}\$$configName", initial, displayName, description, configSwitch, maxLength, secret).also {
+			Config.register(it)
+			if (!hidden) {
+				Config.registerIn(subcategory, it)
+				configSwitch.subconfigs.add(it)
+			}
+		}
+
+	fun addButton(
+		configName: String,
+		description: String = "",
+		displayName: String,
+		label: String = "Open",
+		action: () -> Unit
+	): ConfigData.Button =
+		ConfigData.Button("${this.configName}\$$configName", displayName, description, configSwitch, label, action).also {
+			Config.register(it)
+			Config.registerIn(subcategory, it)
+			configSwitch.subconfigs.add(it)
+		}
+
 	fun enable() {
 		if (!active) {
 			active = true
