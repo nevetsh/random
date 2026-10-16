@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
 // quest, the quest list and the start button as the slayer's own drop, so the item is no help.
 object AutoSlayer : Feature(
 	"autoSlayer",
-	"After a slayer boss dies: opens the Maddox Batphone, collects the reward, starts the same quest again and confirms it. Turns itself off when the Batphone is not in the hotbar.",
+	"Collects, then requeues the quest.",
 	subcategory = "Auto Slayer",
 	displayName = "Auto Slayer",
 	enabledByDefault = false

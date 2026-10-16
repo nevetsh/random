@@ -10,16 +10,18 @@ import net.minecraft.util.FormattedCharSequence
 
 object CustomName : Feature(
 	"customName",
-	"Shows a custom name instead of yours, and redirects those commands.",
+	"Shows a custom name in chat.",
 	subcategory = "General",
 	displayName = "Custom Name",
-	enabledByDefault = true
+	enabledByDefault = true,
+	heading = "Cosmetics"
 ) {
 	private val settingName = addText(
 		"name",
 		"femboy",
-		"Shown instead of your username; commands typed with it are redirected.",
-		"Name"
+		"Shown instead of your username.",
+		"Name",
+		heading = "Cosmetics"
 	)
 
 	private var cacheReal = ""

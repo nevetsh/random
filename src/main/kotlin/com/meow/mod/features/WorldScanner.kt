@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 // Ported from OdinClient (skies-starred/OdinClient, BSD-3-Clause)
 object WorldScanner : Feature(
 	"worldScanner",
-	"Highlights Crystal Hollows structures: crystals, mob spots, grottos.",
+	"Highlights Crystal Hollows structures.",
 	subcategory = "World Scanner",
 	displayName = "World Scanner",
 	enabledByDefault = true
@@ -36,15 +36,15 @@ object WorldScanner : Feature(
 
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 
-	private val scanCrystals = addSwitch("scanCrystals", true, "Scans for crystal waypoints.", "Scan Crystals")
-	private val scanMobSpots = addSwitch("scanMobSpots", true, "Scans for mob spawn locations.", "Scan Mob Spots")
-	private val scanFairyGrottos = addSwitch("scanFairyGrottos", true, "Scans for fairy grottos.", "Scan Fairy Grottos")
-	private val scanDragonNest = addSwitch("scanDragonNest", true, "Scans for the golden dragon nest.", "Scan Dragon Nest")
-	private val scanWormFishing = addSwitch("scanWormFishing", false, "Scans for worm fishing spots.", "Scan Worm Fishing")
-	private val lavaEsp = addSwitch("lavaEsp", false, "Highlights lava blocks.", "Lava ESP")
-	private val waterEsp = addSwitch("waterEsp", false, "Highlights water blocks.", "Water ESP")
-	private val espRange = addSlider("espRange", 32.0, 8.0, 128.0, "Range for lava and water ESP.", "ESP Range")
-	private val sendCoordsInChat = addSwitch("sendCoordsInChat", false, "Sends coordinates to chat when a structure is found.", "Send Coords in Chat")
+	private val scanCrystals = addSwitch("scanCrystals", true, "Crystal waypoints.", "Scan Crystals")
+	private val scanMobSpots = addSwitch("scanMobSpots", true, "Mob spawn points.", "Scan Mob Spots")
+	private val scanFairyGrottos = addSwitch("scanFairyGrottos", true, "Fairy grottos.", "Scan Fairy Grottos")
+	private val scanDragonNest = addSwitch("scanDragonNest", true, "Golden dragon nest.", "Scan Dragon Nest")
+	private val scanWormFishing = addSwitch("scanWormFishing", false, "Worm fishing spots.", "Scan Worm Fishing")
+	private val lavaEsp = addSwitch("lavaEsp", false, "Highlight lava.", "Lava ESP")
+	private val waterEsp = addSwitch("waterEsp", false, "Highlight water.", "Water ESP")
+	private val espRange = addSlider("espRange", 32.0, 8.0, 128.0, "Range for lava and water.", "ESP Range")
+	private val sendCoordsInChat = addSwitch("sendCoordsInChat", false, "Send coordinates to chat.", "Send Coords in Chat")
 
 	private val waypoints = ConcurrentHashMap<String, WaypointData>()
 	private val scannedChunks = HashSet<Long>()

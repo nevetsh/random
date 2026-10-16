@@ -17,14 +17,14 @@ import net.minecraft.world.phys.HitResult
 // Ported from OdinClient (skies-starred/OdinClient, BSD-3-Clause)
 object TriggerBot : Feature(
 	"triggerBot",
-	"Trigger bots for crystals and dungeon secrets.",
+	"Trigger bots for crystals and secrets.",
 	subcategory = "Trigger Bot",
 	displayName = "Trigger Bot",
 	enabledByDefault = true
 ) {
 	private val crystal = addSwitch(
 		"crystal", false,
-		"Automatically takes and places crystals.", "Crystal"
+		"Takes and places crystals.", "Crystal"
 	)
 	private val take = addSwitch(
 		"take", true,
@@ -36,11 +36,11 @@ object TriggerBot : Feature(
 	)
 	private val secret = addSwitch(
 		"secret", true,
-		"Automatically clicks secrets.", "Secret"
+		"Clicks secrets.", "Secret"
 	)
 	private val delay = addSlider(
 		"delay", 200.0, 0.0, 1000.0,
-		"The delay between each secret click.", "Delay"
+		"Delay between secret clicks.", "Delay"
 	)
 
 	// Cooldown between crystal clicks, before its human wobble.

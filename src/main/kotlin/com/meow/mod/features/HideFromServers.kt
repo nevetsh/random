@@ -2,10 +2,11 @@ package com.meow.mod.features
 
 object HideFromServers : Feature(
 	"hideFromServers",
-	"Keeps MeowMod's own channels and payloads off the wire. Other mods' traffic is untouched, so Hypixel Mod API features (Skyblocker's location, End and Slayer modules) keep working.",
+	"Hides MeowMod's own traffic.",
 	subcategory = "General",
 	displayName = "Hide MeowMod From Servers",
-	enabledByDefault = true
+	enabledByDefault = true,
+	heading = "Mod Information"
 ) {
 	@Volatile
 	private var hiding = true

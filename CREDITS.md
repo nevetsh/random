@@ -1,11 +1,12 @@
 # Credits
 
 MeowMod itself is MIT licensed (see the `license` field in `src/main/resources/fabric.mod.json`).
-Two modules are ports of other people's work and stay under the licence that work came with, so the
+Three modules are ports of other people's work and stay under the licence that work came with, so the
 notices belong here.
 
 ## OdinClient — BSD 3-Clause
 
+`Auto Click` ([AutoClick.kt](src/main/kotlin/com/meow/mod/features/AutoClick.kt)),
 `Auto Harp` ([AutoHarp.kt](src/main/kotlin/com/meow/mod/features/AutoHarp.kt)) and
 `Auto Experiments` ([AutoExperiments.kt](src/main/kotlin/com/meow/mod/features/AutoExperiments.kt))
 are ports of modules from [skies-starred/OdinClient](https://github.com/skies-starred/OdinClient),

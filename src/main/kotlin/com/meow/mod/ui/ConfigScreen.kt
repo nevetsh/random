@@ -35,6 +35,11 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	private var mouseX = 0
 	private var mouseY = 0
 
+	// The sidebar's search box, which narrows the module list down.
+	private var search = ""
+	private var searching = false
+	private var searchRect: Rect? = null
+
 	private val leftX get() = pctX(17.5)
 	private val mainY get() = pctY(17.5)
 	private val mainW get() = pctW(65.0)
@@ -72,22 +77,56 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		Render2D.text(graphics, "v${MeowMod.VERSION}", leftX + 4, mainY + 16, ColorPalette.argb(ColorPalette.TITLE), false, 1f)
 
 		drawCategories(graphics)
+		drawSearch(graphics)
 		drawClose(graphics)
 		drawContent(graphics, mouseX, mouseY)
 	}
 
+	private data class Entry(val name: String, val rect: Rect)
+
+	// General stays at the top - it is the page the screen opens on - and the modules are listed
+	// after it in alphabetical order. The search box above Close narrows the list down.
+	private fun listedSubcategories(): List<String> {
+		val query = search.trim()
+		return Config.subcategories
+			.filter { query.isEmpty() || it.contains(query, ignoreCase = true) }
+			.sortedWith(compareByDescending<String> { it == Config.GENERAL }.thenBy { it.lowercase() })
+	}
+
+	private fun sidebarEntries(): List<Entry> = listedSubcategories().mapIndexed { index, sub ->
+		Entry(sub, Rect(leftX + 3, mainY + 32 + index * (ENTRY_H + 2), leftW - 6, ENTRY_H))
+	}
+
 	private fun drawCategories(graphics: GuiGraphicsExtractor) {
-		var y = mainY + 32
-		val entryH = 14
-		for (sub in Config.subcategories) {
-			val rect = Rect(leftX + 3, y, leftW - 6, entryH)
-			val active = sub == selected
+		for (entry in sidebarEntries()) {
+			val rect = entry.rect
+			val active = entry.name == selected
 			if (active) Render2D.rect(graphics, rect.x, rect.y, rect.w, rect.h, ColorPalette.TERTIARY)
 			val color = if (active) ColorPalette.argb(ColorPalette.ACCENT) else ColorPalette.argb(ColorPalette.LIGHT_TEXT)
-			Render2D.text(graphics, sub, rect.x + 4, rect.y + 3, color, false, 1f)
+			Render2D.text(graphics, entry.name, rect.x + 4, rect.y + 3, color, false, 1f)
 			if (active) Render2D.argb(graphics, rect.x, rect.y + rect.h - 1, rect.w, 1, ColorPalette.argb(ColorPalette.ACCENT))
-			y += entryH + 2
 		}
+	}
+
+	private fun drawSearch(graphics: GuiGraphicsExtractor) {
+		val rect = Rect(leftX + 3, mainY + mainH - 38, leftW - 6, 14)
+		searchRect = rect
+		Render2D.rect(graphics, rect.x, rect.y, rect.w, rect.h, ColorPalette.TERTIARY)
+		Render2D.outline(
+			graphics, rect.x, rect.y, rect.w, rect.h,
+			ColorPalette.argb(if (searching) ColorPalette.ACCENT else ColorPalette.OUTLINE)
+		)
+		val label = when {
+			searching -> search + "_"
+			search.isEmpty() -> "Search modules..."
+			else -> search
+		}
+		val color = when {
+			searching -> ColorPalette.argb(ColorPalette.ACCENT)
+			search.isEmpty() -> ColorPalette.argb(ColorPalette.LIGHT_TEXT)
+			else -> ColorPalette.argb(ColorPalette.TEXT)
+		}
+		Render2D.text(graphics, truncate(label, rect.w - 6, 0.85f), rect.x + 3, rect.y + 3, color, false, 0.85f)
 	}
 
 	private fun drawClose(graphics: GuiGraphicsExtractor) {
@@ -125,6 +164,17 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		data.forEachIndexed { index, configData ->
 			val rowY = contentTop + (index * rowH) - scroll.roundToInt()
 			if (rowY + rowH < contentTop || rowY > contentTop + contentH) return@forEachIndexed
+
+			// A heading, centred across the page, splitting it into named groups.
+			if (configData is ConfigData.Section) {
+				val label = "=== ${configData.title} ==="
+				val labelW = (Render2D.width(label) * HEADING_SCALE).roundToInt()
+				Render2D.text(
+					graphics, label, rightX + (rightW - labelW) / 2, rowY + 5,
+					ColorPalette.argb(ColorPalette.ACCENT), false, HEADING_SCALE
+				)
+				return@forEachIndexed
+			}
 
 			val rowX = rightX + 4
 			val rowW = rightW - 8
@@ -204,6 +254,13 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		return if (end <= 0) "" else text.substring(0, end) + ellipsis
 	}
 
+	// A whole number reads as "10", and only a half step drags a decimal in ("5.5"), so a
+	// slider that counts in steps of one stays as short as it always was.
+	private fun sliderText(value: Double): String {
+		val text = value.toString()
+		return if (text.endsWith(".0")) text.dropLast(2) else text
+	}
+
 	private fun drawSwitch(graphics: GuiGraphicsExtractor, track: Rect, on: Boolean) {
 		val color = if (on) ColorPalette.ENABLED else ColorPalette.DISABLED
 		Render2D.rect(graphics, track.x, track.y, track.w, track.h, color)
@@ -222,12 +279,12 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		Render2D.rect(graphics, track.x + (filled - 1).coerceIn(0, track.w - 2), track.y - 1, 2, track.h + 2, ColorPalette.TEXT)
 
 		val editingThis = editing === slider
-		val valueText = if (editingThis) editBuffer + "_" else slider.get().roundToInt().toString()
+		val valueText = if (editingThis) editBuffer + "_" else sliderText(slider.get())
 		val textX = track.x + track.w + 3
 		val color = if (editingThis) ColorPalette.argb(ColorPalette.ACCENT) else ColorPalette.argb(ColorPalette.LIGHT_TEXT)
 		Render2D.text(graphics, valueText, textX, track.y + 1, color, false, 0.9f)
 
-		val labelWidth = Render2D.width(valueText).coerceAtLeast(Render2D.width(slider.get().roundToInt().toString())).coerceAtLeast(10)
+		val labelWidth = Render2D.width(valueText).coerceAtLeast(Render2D.width(sliderText(slider.get()))).coerceAtLeast(10)
 		return Rect(textX - 3, track.y - 3, labelWidth + 8, track.h + 6)
 	}
 
@@ -269,16 +326,19 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 
 		closeRect?.let { if (it.contains(mx, my)) { onClose(); return true } }
 
-		var y = mainY + 32
-		val entryH = 14
-		for (sub in Config.subcategories) {
-			val rect = Rect(leftX + 3, y, leftW - 6, entryH)
-			if (rect.contains(mx, my)) {
-				selected = sub
+		if (searchRect?.contains(mx, my) == true) {
+			searching = true
+			return true
+		}
+		// Any other click puts the search box away, so the next key press is the game's.
+		searching = false
+
+		for (entry in sidebarEntries()) {
+			if (entry.rect.contains(mx, my)) {
+				selected = entry.name
 				scroll = 0.0
 				return true
 			}
-			y += entryH + 2
 		}
 
 		for (control in rows) {
@@ -286,7 +346,7 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 				is ConfigData.Slider -> {
 					if (control.valueRect?.contains(mx, my) == true) {
 						editing = data
-						editBuffer = data.get().roundToInt().toString()
+						editBuffer = sliderText(data.get())
 						return true
 					}
 				}
@@ -334,7 +394,7 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 
 	private fun commitEdit() {
 		val slider = editing ?: return
-		editBuffer.toDoubleOrNull()?.let { slider.set(it.coerceIn(slider.min, slider.max)) }
+		editBuffer.toDoubleOrNull()?.let { slider.set(slider.snap(it).coerceIn(slider.min, slider.max)) }
 		editing = null
 		editBuffer = ""
 	}
@@ -365,8 +425,7 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	private fun updateSlider(slider: ConfigData.Slider, mx: Int, track: Rect) {
 		val t = ((mx - track.x).toDouble() / track.w.toDouble()).coerceIn(0.0, 1.0)
 		val raw = slider.min + t * (slider.max - slider.min)
-		val snapped = (raw / 10.0).roundToInt() * 10.0
-		slider.set(snapped.coerceIn(slider.min, slider.max))
+		slider.set(slider.snap(raw).coerceIn(slider.min, slider.max))
 	}
 
 	override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
@@ -378,6 +437,11 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	}
 
 	override fun charTyped(characterEvent: CharacterEvent): Boolean {
+		if (searching) {
+			val text = characterEvent.codepointAsString()
+			if (text.length == 1 && text[0].code >= 32 && search.length < SEARCH_MAX) search += text[0]
+			return true
+		}
 		if (editingText != null) {
 			val text = characterEvent.codepointAsString()
 			if (text.length == 1 && text[0].code >= 32) {
@@ -397,6 +461,25 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	}
 
 	override fun keyPressed(keyEvent: KeyEvent): Boolean {
+		if (searching) {
+			when (keyEvent.key()) {
+				InputConstants.KEY_ESCAPE, InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
+					searching = false
+					return true
+				}
+
+				InputConstants.KEY_BACKSPACE -> {
+					if (search.isNotEmpty()) search = search.dropLast(1)
+					return true
+				}
+
+				InputConstants.KEY_DELETE -> {
+					search = ""
+					return true
+				}
+			}
+			return true
+		}
 		if (editingText != null) {
 			if (keyEvent.isPaste()) {
 				val clip = Minecraft.getInstance().keyboardHandler.getClipboard()
@@ -457,4 +540,13 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	}
 
 	override fun isPauseScreen(): Boolean = false
+
+	private companion object {
+		// The sidebar's entry height, and how far a search may run before it stops taking more.
+		const val ENTRY_H = 14
+		const val SEARCH_MAX = 24
+
+		// Headings are drawn a touch smaller than the settings under them.
+		const val HEADING_SCALE = 0.95f
+	}
 }

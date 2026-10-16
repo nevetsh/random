@@ -30,7 +30,7 @@ import java.util.concurrent.Executors
 // the same channel set, and nowhere else.
 object DiscordChat : Feature(
 	"discordChat",
-	"Relays chat to and from a Discord channel (needs a bot token).",
+	"Relays chat to a Discord channel.",
 	subcategory = "Discord Chat",
 	displayName = "Discord Chat",
 	enabledByDefault = true
@@ -49,7 +49,7 @@ object DiscordChat : Feature(
 	private val tokenData = addText(
 		"token",
 		"",
-		"Discord bot token. Set it in meowmod.json; not shown in the UI.",
+		"Set it in meowmod.json.",
 		"Bot Token",
 		maxLength = 128,
 		hidden = true
@@ -58,7 +58,7 @@ object DiscordChat : Feature(
 	private val channelData = addText(
 		"channel",
 		"1557216865002979369",
-		"Discord channel ID to relay with.",
+		"Channel ID to relay with.",
 		"Channel ID",
 		maxLength = 32
 	)
@@ -66,14 +66,14 @@ object DiscordChat : Feature(
 	private val settingOutgoing = addSwitch(
 		"outgoing",
 		true,
-		"Send your Minecraft chat (and party/guild commands) to Discord.",
+		"Send your chat to Discord.",
 		"Relay Outgoing"
 	)
 
 	private val settingIncoming = addSwitch(
 		"incoming",
 		true,
-		"Show new Discord messages, and /dc and /irc lines from other mod users, in chat.",
+		"Show Discord messages in chat.",
 		"Relay Incoming"
 	)
 
@@ -81,7 +81,7 @@ object DiscordChat : Feature(
 		"poll",
 		2.0,
 		1.0, 10.0,
-		"Seconds between Discord message polls.",
+		"Seconds between Discord polls.",
 		"Poll Interval (s)"
 	)
 

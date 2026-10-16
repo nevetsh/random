@@ -21,10 +21,11 @@ import java.util.concurrent.atomic.AtomicInteger
 
 object ModUpdater : Feature(
 	"modUpdater",
-	"Downloads a newer build from GitHub and restarts to apply it.",
+	"Downloads newer builds from GitHub.",
 	subcategory = "General",
 	displayName = "Auto Updater",
-	enabledByDefault = true
+	enabledByDefault = true,
+	heading = "Mod Information"
 ) {
 	private const val REPO = "nevetsh/random"
 	private const val API = "https://api.github.com/repos/$REPO"
@@ -39,17 +40,19 @@ object ModUpdater : Feature(
 	private val SETTING_AUTO_RESTART = addSwitch(
 		"autoRestart",
 		true,
-		"Restart the client once an update has been downloaded.",
-		"Auto Restart"
+		"Restart once an update is downloaded.",
+		"Auto Restart",
+		heading = "Mod Information"
 	)
 
 	// The kill switch in the General screen: end this session, install a newer build if there
 	// is one, then start the client again from the same command line.
 	private val restartButton = addButton(
 		"restart",
-		"Ends this session, installs a newer build if there is one, then starts the client again.",
+		"Install any update, then restart.",
 		"Kill Switch",
 		label = "Restart",
+		heading = "Mod Information",
 		action = { killAndRelaunch() }
 	)
 

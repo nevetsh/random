@@ -9,6 +9,10 @@ import java.nio.file.Files
 object Config {
 	const val CATEGORY_NAME = "MeowMod"
 
+	// The subcategory a setting lands in unless it says otherwise. It is the page the config
+	// screen opens on, so it is kept at the top of the list rather than sorted with the modules.
+	const val GENERAL = "General"
+
 	private val gson = GsonBuilder().setPrettyPrinting().create()
 	private val file
 		get() = FabricLoader.getInstance().configDir.resolve("meowmod.json")
@@ -21,19 +25,51 @@ object Config {
 	val subcategories: MutableList<String> = mutableListOf()
 	private val bySubcategory = linkedMapOf<String, MutableList<ConfigData<*>>>()
 
+	// The headings a subcategory was split into, in the order they are listed, and which heading
+	// each setting was put under.
+	private val headings = linkedMapOf<String, MutableList<String>>()
+	private val headingOf = HashMap<ConfigData<*>, String>()
+
+	// The list the config screen draws, worked out once per change rather than on every frame.
+	private val listed = HashMap<String, List<ConfigData<*>>>()
+
 	fun register(data: ConfigData<*>) {
+		// A heading is a marker the config screen draws, not a setting: there is nothing in it
+		// to save and nothing to load.
+		if (data.type == ConfigType.SECTION) return
 		configs.add(data)
 	}
 
-	fun registerIn(subcategory: String, data: ConfigData<*>) {
+	fun registerIn(subcategory: String, data: ConfigData<*>, heading: String? = null) {
 		bySubcategory.getOrPut(subcategory) {
 			subcategories.add(subcategory)
 			mutableListOf()
 		}.add(data)
+		if (heading != null) headingOf[data] = heading
+		listed.remove(subcategory)
 	}
 
-	fun configsFor(subcategory: String): List<ConfigData<*>> =
-		bySubcategory[subcategory].orEmpty()
+	// Splits a subcategory into named groups. The headings are listed in the order they are
+	// declared, and the settings that name one follow it, so a page reads the way it was
+	// designed however the modules that own those settings happen to be built.
+	fun declareHeadings(subcategory: String, vararg titles: String) {
+		headings.getOrPut(subcategory) { mutableListOf() }.addAll(titles)
+		listed.remove(subcategory)
+	}
+
+	fun configsFor(subcategory: String): List<ConfigData<*>> = listed.getOrPut(subcategory) {
+		val items = bySubcategory[subcategory].orEmpty()
+		val titles = headings[subcategory].orEmpty()
+		val result = mutableListOf<ConfigData<*>>()
+		titles.forEachIndexed { index, title ->
+			result.add(ConfigData.Section("$subcategory#$index", title))
+			items.filterTo(result) { headingOf[it] == title }
+		}
+		// Anything that named no heading, or named one that was never declared, is listed after
+		// the headings rather than being dropped off the page.
+		items.filterTo(result) { it !in headingOf || headingOf[it] !in titles }
+		result
+	}
 
 	fun load() {
 		val f = file
@@ -57,7 +93,8 @@ object Config {
 			ConfigType.SWITCH -> (data as ConfigData<Boolean>).set(element.asBoolean)
 			ConfigType.SLIDER -> (data as ConfigData<Double>).set(element.asDouble)
 			ConfigType.TEXT -> (data as ConfigData<String>).set(element.asString)
-			ConfigType.BUTTON -> {}
+			// Neither of these holds a value the player sets.
+			ConfigType.BUTTON, ConfigType.SECTION -> {}
 		}
 	}
 

@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory
 // menu that is already on its way out.
 object AutoBz : Feature(
 	"autoBz",
-	"Re-places a Bazaar order you cancelled while holding CTRL.",
+	"Re-places the order cancelled with CTRL.",
 	subcategory = "Auto BZ",
 	displayName = "Auto BZ",
 	enabledByDefault = true
@@ -81,51 +81,51 @@ object AutoBz : Feature(
 	private val autoRestore = addSwitch(
 		"autoRestore",
 		true,
-		"Re-place as soon as the cancel is confirmed. Off: use /mm restore.",
+		"Re-place once the cancel is confirmed.",
 		"Auto Re-place"
 	)
 	private val fastRelist = addSwitch(
 		"fastRelist",
 		true,
-		"Click the cancelled product in the open menu instead of searching.",
+		"Click the product in the open menu.",
 		"Re-place From Open Menu"
 	)
 	private val inventoryRelist = addSwitch(
 		"inventoryRelist",
 		false,
-		"Left-click the cancelled item in your inventory on the Bazaar menu, for sell offers.",
+		"Left-click a cancelled item to relist it.",
 		"Re-place From Inventory"
 	)
 	private val autoSell = addSwitch(
 		"autoSell",
 		true,
-		"Hold CTRL and left-click an item in your inventory to offer it for sale.",
+		"CTRL-click an item to sell it.",
 		"Auto Sell"
 	)
 	private val startDelay = addSlider(
 		"startDelay",
 		600.0,
 		0.0, 3000.0,
-		"How long to wait after the cancel before starting to click.",
+		"Wait after the cancel before clicking.",
 		"Start Delay (ms)"
 	)
 	private val stepDelay = addSlider(
 		"stepDelay",
 		600.0,
 		100.0, 1500.0,
-		"Minimum spacing between clicks. Steps also wait for their menu.",
+		"Minimum gap between clicks.",
 		"Step Delay (ms)"
 	)
 	private val priceOptionBuy = addText(
 		"priceOptionBuy",
 		"Top Order +0.1",
-		"Which price button to pick when re-placing a buy order.",
+		"Price button for buy orders.",
 		"Buy Price Option"
 	)
 	private val priceOptionSell = addText(
 		"priceOptionSell",
 		"Best Offer -0.1",
-		"Which price button to pick when re-listing a sell offer.",
+		"Price button for sell offers.",
 		"Sell Price Option"
 	)
 

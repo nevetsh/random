@@ -3,31 +3,41 @@ package com.meow.mod.features
 import com.meow.mod.config.Config
 import com.meow.mod.config.ConfigData
 
+// A module and the settings it owns. Everything a module registers is listed under the
+// module's own subcategory unless it says otherwise: the key bindings, for instance, are
+// registered into General, where the player looks for their keys.
 abstract class Feature(
 	val configName: String,
 	description: String = "",
-	val subcategory: String = "General",
+	val subcategory: String = Config.GENERAL,
 	displayName: String,
-	enabledByDefault: Boolean = false
+	enabledByDefault: Boolean = false,
+	heading: String? = null
 ) {
 	val configSwitch: ConfigData.FeatureSwitch =
 		ConfigData.FeatureSwitch(configName, displayName, description, enabledByDefault).also {
 			Config.register(it)
-			Config.registerIn(subcategory, it)
+			Config.registerIn(subcategory, it, heading)
 			Config.features.add(it)
 		}
 
 	private var active = false
 
+	// Where a setting is listed, defaulting to the module's own subcategory. Only a setting that
+	// belongs somewhere else passes one.
+	private fun listedIn(subcategory: String?): String = subcategory ?: this.subcategory
+
 	fun addSwitch(
 		configName: String,
 		initial: Boolean,
 		description: String = "",
-		displayName: String
+		displayName: String,
+		subcategory: String? = null,
+		heading: String? = null
 	): ConfigData.Switch =
 		ConfigData.Switch("${this.configName}\$$configName", initial, displayName, description, configSwitch).also {
 			Config.register(it)
-			Config.registerIn(subcategory, it)
+			Config.registerIn(listedIn(subcategory), it, heading)
 			configSwitch.subconfigs.add(it)
 		}
 
@@ -37,11 +47,14 @@ abstract class Feature(
 		min: Double,
 		max: Double,
 		description: String = "",
-		displayName: String
+		displayName: String,
+		subcategory: String? = null,
+		heading: String? = null,
+		step: Double = 10.0
 	): ConfigData.Slider =
-		ConfigData.Slider("${this.configName}\$$configName", initial, min, max, displayName, description, configSwitch).also {
+		ConfigData.Slider("${this.configName}\$$configName", initial, min, max, displayName, description, configSwitch, step).also {
 			Config.register(it)
-			Config.registerIn(subcategory, it)
+			Config.registerIn(listedIn(subcategory), it, heading)
 			configSwitch.subconfigs.add(it)
 		}
 
@@ -52,12 +65,14 @@ abstract class Feature(
 		displayName: String,
 		maxLength: Int = 96,
 		secret: Boolean = false,
-		hidden: Boolean = false
+		hidden: Boolean = false,
+		subcategory: String? = null,
+		heading: String? = null
 	): ConfigData.Text =
 		ConfigData.Text("${this.configName}\$$configName", initial, displayName, description, configSwitch, maxLength, secret).also {
 			Config.register(it)
 			if (!hidden) {
-				Config.registerIn(subcategory, it)
+				Config.registerIn(listedIn(subcategory), it, heading)
 				configSwitch.subconfigs.add(it)
 			}
 		}
@@ -67,11 +82,13 @@ abstract class Feature(
 		description: String = "",
 		displayName: String,
 		label: String = "Open",
+		subcategory: String? = null,
+		heading: String? = null,
 		action: () -> Unit
 	): ConfigData.Button =
 		ConfigData.Button("${this.configName}\$$configName", displayName, description, configSwitch, label, action).also {
 			Config.register(it)
-			Config.registerIn(subcategory, it)
+			Config.registerIn(listedIn(subcategory), it, heading)
 			configSwitch.subconfigs.add(it)
 		}
 

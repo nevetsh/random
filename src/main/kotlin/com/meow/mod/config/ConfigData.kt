@@ -1,5 +1,7 @@
 package com.meow.mod.config
 
+import kotlin.math.roundToInt
+
 open class ConfigData<T> @JvmOverloads constructor(
 	val configName: String,
 	val type: ConfigType,
@@ -44,6 +46,18 @@ open class ConfigData<T> @JvmOverloads constructor(
 		initial: Boolean = false
 	) : ConfigData<Boolean>(configName, ConfigType.SWITCH, initial, displayName, description) {
 		val subconfigs = mutableListOf<ConfigData<*>>()
+
+		// The key that switches this module on and off from in-game, saved with the rest of the
+		// settings under the module's own name. It is deliberately not listed in any config
+		// screen: the module keys have a screen of their own, where every module sits next to
+		// the key it answers to (see ModuleKeys).
+		private val keyData = Text("$configName\$key", "0", "Toggle Key", "")
+
+		var toggleKey: Int
+			get() = keyData.get().toIntOrNull() ?: 0
+			set(value) {
+				keyData.set(value.toString())
+			}
 	}
 
 	class Slider(
@@ -53,8 +67,13 @@ open class ConfigData<T> @JvmOverloads constructor(
 		val max: Double,
 		displayName: String,
 		description: String = "",
-		parent: FeatureSwitch? = null
-	) : ConfigData<Double>(configName, ConfigType.SLIDER, initial, displayName, description, parent)
+		parent: FeatureSwitch? = null,
+		// Where a dragged or typed value lands. Most sliders count in tens, but a clicks per
+		// second setting wants half steps, so the step is the slider's own.
+		val step: Double = 10.0
+	) : ConfigData<Double>(configName, ConfigType.SLIDER, initial, displayName, description, parent) {
+		fun snap(value: Double): Double = (value / step).roundToInt() * step
+	}
 
 	class Text(
 		configName: String,
@@ -65,6 +84,13 @@ open class ConfigData<T> @JvmOverloads constructor(
 		val maxLength: Int = 96,
 		val secret: Boolean = false
 	) : ConfigData<String>(configName, ConfigType.TEXT, initial, displayName, description, parent)
+
+	// A heading inside a subcategory, so a long page like General can be split into named
+	// groups. It holds no value: it is only ever drawn (see Config.configsFor).
+	class Section(
+		configName: String,
+		val title: String
+	) : ConfigData<Boolean>(configName, ConfigType.SECTION, false, title, "")
 
 	class Button(
 		configName: String,

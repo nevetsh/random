@@ -18,7 +18,7 @@ import kotlin.jvm.optionals.getOrNull
 
 object AutoCombine : Feature(
 	"autoCombine",
-	"Combines set enchanted books to their max level.",
+	"Combines enchanted books to max level.",
 	subcategory = "Auto Combine",
 	displayName = "Auto Combine",
 	enabledByDefault = true
@@ -27,13 +27,13 @@ object AutoCombine : Feature(
 		"delay",
 		250.0,
 		50.0, 1000.0,
-		"The delay for each click (too low might ban)",
+		"Delay for each click.",
 		"AutoCombine Delay"
 	)
 	private val SETTING_FORCE_ONLY = addSwitch(
 		"forceAcceptOnly",
 		false,
-		"Only click the anvil instead of doing the whole combine.",
+		"Only click the anvil.",
 		"Force Click Only"
 	)
 	private val books = mapOf(

@@ -6,16 +6,18 @@ import com.meow.mod.config.Config
 import com.meow.mod.events.MeowEvents
 import com.meow.mod.features.AutoAuction
 import com.meow.mod.features.AutoBz
+import com.meow.mod.features.AutoClick
 import com.meow.mod.features.AutoCombine
 import com.meow.mod.features.AutoExperiments
+import com.meow.mod.features.AutoFragrun
 import com.meow.mod.features.AutoHarp
 import com.meow.mod.features.AutoSlayer
 import com.meow.mod.features.CustomName
 import com.meow.mod.features.DiscordChat
 import com.meow.mod.features.Feature
 import com.meow.mod.features.HideFromServers
-import com.meow.mod.features.KeyCommand
 import com.meow.mod.features.ModUpdater
+import com.meow.mod.features.ModuleKeys
 import com.meow.mod.features.NoInteract
 import com.meow.mod.features.SkipCommandConfirm
 import com.meow.mod.features.TriggerBot
@@ -38,14 +40,22 @@ object MeowMod : ClientModInitializer {
 			.map { it.metadata.version.friendlyString }
 			.orElse("dev")
 
+	// Modules are built in this order, and inside a heading of the General page that is also the
+	// order the settings are listed in: it is what puts No Interact above No Command
+	// Confirmation. Which heading a setting belongs to is declared on the setting itself, so a
+	// module can add one to General from anywhere.
 	private val allFeatures: List<Feature> = listOf(
-		HideFromServers, AutoCombine, ModUpdater,
-		AutoHarp, AutoExperiments, TriggerBot, WorldScanner,
-		KeyCommand, CustomName, DiscordChat, SkipCommandConfirm,
-		AutoAuction, AutoBz, NoInteract, AutoSlayer
+		AutoFragrun, HideFromServers, AutoCombine, ModUpdater,
+		AutoHarp, AutoExperiments, TriggerBot, AutoClick, WorldScanner,
+		CustomName, DiscordChat, NoInteract, SkipCommandConfirm,
+		AutoAuction, AutoBz, AutoSlayer
 	)
 
 	override fun onInitializeClient() {
+		// The General page is split into named groups, listed in this order however the modules
+		// happen to register their settings.
+		Config.declareHeadings(Config.GENERAL, "Mod Information", "Keybinds", "Cosmetics", "Misc")
+
 		Access.check(Minecraft.getInstance().user.profileId)
 
 		allFeatures.forEach { feature ->
@@ -61,8 +71,10 @@ object MeowMod : ClientModInitializer {
 		AutoHarp.initialize()
 		AutoExperiments.initialize()
 		TriggerBot.initialize()
+		AutoClick.initialize()
 		WorldScanner.initialize()
-		KeyCommand.initialize()
+		AutoFragrun.initialize()
+		ModuleKeys.initialize()
 		DiscordChat.initialize()
 		AutoAuction.initialize()
 		AutoBz.initialize()

@@ -11,7 +11,7 @@ import net.minecraft.world.item.Items
 // Ported from OdinClient (skies-starred/OdinClient, BSD-3-Clause)
 object AutoHarp : Feature(
 	"autoHarp",
-	"Plays the Harp for you (clicks the lit quartz block).",
+	"Plays the Harp for you.",
 	subcategory = "Auto Harp",
 	displayName = "Auto Harp",
 	enabledByDefault = true
@@ -20,7 +20,7 @@ object AutoHarp : Feature(
 		"delay",
 		100.0,
 		0.0, 500.0,
-		"Minimum delay in milliseconds between clicks.",
+		"Minimum delay between clicks.",
 		"Click Delay (ms)"
 	)
 

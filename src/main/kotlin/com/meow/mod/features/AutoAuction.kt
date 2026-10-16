@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory
 // there until a timer runs out.
 object AutoAuction : Feature(
 	"autoAuction",
-	"Sets your auction duration (default \"2 Days\") by picking it in the picker.",
+	"Picks your auction duration.",
 	subcategory = "Auto Auction",
 	displayName = "Auto Auction",
 	enabledByDefault = true
@@ -38,7 +38,7 @@ object AutoAuction : Feature(
 	private val durationData = addText(
 		"duration",
 		"2 Days",
-		"Duration option to pick. Must match the item name in the picker.",
+		"Must match the item name.",
 		"Duration"
 	)
 
@@ -46,7 +46,7 @@ object AutoAuction : Feature(
 		"delay",
 		200.0,
 		50.0, 1000.0,
-		"Delay between the two clicks in milliseconds.",
+		"Delay between the two clicks.",
 		"Click Delay (ms)"
 	)
 

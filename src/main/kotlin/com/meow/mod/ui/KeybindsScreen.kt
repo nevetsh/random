@@ -1,6 +1,7 @@
 package com.meow.mod.ui
 
-import com.meow.mod.features.KeyCommand
+import com.meow.mod.features.AutoFragrun
+import com.meow.mod.features.ModuleKeys
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -10,6 +11,8 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 
+// The command keybinds editor: a key on the left, the command it runs on the right. The module
+// keys have their own screen next to this one (see ModuleKeysScreen).
 class KeybindsScreen(private val parent: Screen?) : Screen(Component.literal("MeowMod.Keybinds")) {
 	private data class Rect(val x: Int, val y: Int, val w: Int, val h: Int) {
 		fun contains(mx: Int, my: Int): Boolean = mx >= x && mx < x + w && my >= y && my < y + h
@@ -45,7 +48,7 @@ class KeybindsScreen(private val parent: Screen?) : Screen(Component.literal("Me
 		Render2D.rect(graphics, panelX, panelY, panelW, panelH, ColorPalette.PRIMARY)
 		Render2D.outline(graphics, panelX, panelY, panelW, panelH, ColorPalette.argb(ColorPalette.OUTLINE))
 
-		Render2D.text(graphics, "Key Command", panelX + 8, panelY + 8, ColorPalette.argb(ColorPalette.TEXT), false, 1.3f)
+		Render2D.text(graphics, "Command Keys", panelX + 8, panelY + 8, ColorPalette.argb(ColorPalette.TEXT), false, 1.3f)
 		Render2D.text(
 			graphics,
 			"Click a key to rebind, click a command to edit it.",
@@ -60,7 +63,7 @@ class KeybindsScreen(private val parent: Screen?) : Screen(Component.literal("Me
 
 	private fun drawRows(graphics: GuiGraphicsExtractor) {
 		val newRows = mutableListOf<Row>()
-		val list = KeyCommand.bindings
+		val list = AutoFragrun.bindings
 		val top = panelY + 40
 		val rowH = 22
 		val leftX = panelX + 8
@@ -76,7 +79,7 @@ class KeybindsScreen(private val parent: Screen?) : Screen(Component.literal("Me
 			val listeningThis = listening == index
 			Render2D.rect(graphics, keyRect.x, keyRect.y, keyRect.w, keyRect.h, ColorPalette.TERTIARY)
 			Render2D.outline(graphics, keyRect.x, keyRect.y, keyRect.w, keyRect.h, ColorPalette.argb(ColorPalette.OUTLINE))
-			val keyLabel = if (listeningThis) "Press a key..." else keyName(binding.key)
+			val keyLabel = if (listeningThis) "Press a key..." else ModuleKeys.keyName(binding.key)
 			val keyColor = if (listeningThis) ColorPalette.argb(ColorPalette.ACCENT) else ColorPalette.argb(ColorPalette.TEXT)
 			Render2D.text(graphics, keyLabel, keyRect.x + 4, keyRect.y + 4, keyColor, false, 0.9f)
 
@@ -146,8 +149,8 @@ class KeybindsScreen(private val parent: Screen?) : Screen(Component.literal("Me
 
 		addRect?.let {
 			if (it.contains(mx, my)) {
-				KeyCommand.bindings.add(KeyCommand.Binding(0, ""))
-				KeyCommand.save()
+				AutoFragrun.bindings.add(AutoFragrun.Binding(0, ""))
+				AutoFragrun.save()
 				return true
 			}
 		}
@@ -166,13 +169,13 @@ class KeybindsScreen(private val parent: Screen?) : Screen(Component.literal("Me
 			}
 			if (row.command.contains(mx, my)) {
 				editing = i
-				buffer = KeyCommand.bindings.getOrNull(i)?.command ?: ""
+				buffer = AutoFragrun.bindings.getOrNull(i)?.command ?: ""
 				return true
 			}
 			if (row.remove.contains(mx, my)) {
-				if (i in KeyCommand.bindings.indices) {
-					KeyCommand.bindings.removeAt(i)
-					KeyCommand.save()
+				if (i in AutoFragrun.bindings.indices) {
+					AutoFragrun.bindings.removeAt(i)
+					AutoFragrun.save()
 				}
 				listening = -1
 				editing = -1
@@ -186,8 +189,8 @@ class KeybindsScreen(private val parent: Screen?) : Screen(Component.literal("Me
 	private fun commitEdit() {
 		val i = editing
 		if (i >= 0) {
-			KeyCommand.bindings.getOrNull(i)?.command = buffer
-			KeyCommand.save()
+			AutoFragrun.bindings.getOrNull(i)?.command = buffer
+			AutoFragrun.save()
 		}
 		editing = -1
 		buffer = ""
@@ -210,15 +213,15 @@ class KeybindsScreen(private val parent: Screen?) : Screen(Component.literal("Me
 				}
 
 				InputConstants.KEY_BACKSPACE, InputConstants.KEY_DELETE -> {
-					KeyCommand.bindings.getOrNull(i)?.key = 0
-					KeyCommand.save()
+					AutoFragrun.bindings.getOrNull(i)?.key = 0
+					AutoFragrun.save()
 					listening = -1
 					return true
 				}
 
 				else -> {
-					KeyCommand.bindings.getOrNull(i)?.key = event.key()
-					KeyCommand.save()
+					AutoFragrun.bindings.getOrNull(i)?.key = event.key()
+					AutoFragrun.save()
 					listening = -1
 					return true
 				}
@@ -260,13 +263,4 @@ class KeybindsScreen(private val parent: Screen?) : Screen(Component.literal("Me
 	}
 
 	override fun isPauseScreen(): Boolean = false
-
-	private fun keyName(key: Int): String {
-		if (key <= 0) return "None"
-		return try {
-			InputConstants.Type.KEYSYM.getOrCreate(key).displayName.string
-		} catch (_: Exception) {
-			"Key $key"
-		}
-	}
 }

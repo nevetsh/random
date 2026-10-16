@@ -2,11 +2,13 @@ package com.meow.mod.features
 
 import com.google.gson.Gson
 import com.google.gson.JsonParser
+import com.meow.mod.Access
 import com.meow.mod.api.ItemUtils
 import com.meow.mod.api.humanDelay
 import com.meow.mod.events.MeowEvents
 import com.meow.mod.skyblock.DungeonUtils
 import com.meow.mod.ui.KeybindsScreen
+import com.meow.mod.ui.ModuleKeysScreen
 import com.mojang.blaze3d.platform.InputConstants
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
@@ -18,11 +20,14 @@ import net.minecraft.world.item.Items
 import org.slf4j.LoggerFactory
 import java.util.concurrent.CopyOnWriteArrayList
 
-object KeyCommand : Feature(
+// The module is the frag run itself: the mob scan, the requeue command and the confirm click.
+// The keys that run commands, and both key editors, are listed in General instead - that is
+// where the player looks for their keys, and they work whatever this module is set to.
+object AutoFragrun : Feature(
 	"keyCommand",
-	"Bind keys to commands, plus Auto F7 requeue after the Blood room.",
-	subcategory = "Key Command",
-	displayName = "Key Command",
+	"Requeues F7 after the Blood room.",
+	subcategory = "Auto Fragrun",
+	displayName = "Auto Fragrun",
 	enabledByDefault = true
 ) {
 	data class Binding(var key: Int, var command: String)
@@ -30,34 +35,61 @@ object KeyCommand : Feature(
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 	private val gson = Gson()
 
+	// Command keys are not the requeue, so they have a switch of their own: turning Auto Fragrun
+	// off must not take the player's command keys away with it.
+	private val bindsEnabled = addSwitch(
+		"bindsEnabled",
+		true,
+		"Fires the command keys.",
+		"Command Keys",
+		subcategory = "General",
+		heading = "Keybinds"
+	)
+
 	private val bindsData = addText(
 		"binds",
 		"[{\"key\":89,\"command\":\"joindungeon catacombs 7\"}]",
-		"Open the editor below to add/remove key -> command bindings.",
-		"Bindings"
+		"Key to command bindings.",
+		"Command Binds",
+		subcategory = "General",
+		heading = "Keybinds"
 	)
 
 	private val editButton = addButton(
 		"edit",
-		"Opens the keybind editor.",
-		"Edit Bindings",
+		"Edit the command keys.",
+		"Edit Command Binds",
 		label = "Edit",
+		subcategory = "General",
+		heading = "Keybinds",
 		action = {
 			Minecraft.getInstance().setScreenAndShow(KeybindsScreen(Minecraft.getInstance().gui.screen()))
+		}
+	)
+
+	private val moduleKeysButton = addButton(
+		"moduleKeys",
+		"Bind a key to any module.",
+		"Module Keybinds",
+		label = "Edit",
+		subcategory = "General",
+		heading = "Keybinds",
+		action = {
+			Minecraft.getInstance().setScreenAndShow(ModuleKeysScreen(Minecraft.getInstance().gui.screen()))
 		}
 	)
 
 	private val settingAutoF7 = addSwitch(
 		"autoF7",
 		true,
-		"After the Blood room: run the command, confirm the join. ESC x2 stops it.",
+		"Requeue after the Blood room.",
 		"Auto F7"
 	)
 
 	private val settingF7Command = addText(
 		"f7Command",
 		"joindungeon catacombs 7",
-		"The command Auto F7 runs after the Blood room.",
+		"Command run after the Blood room.",
 		"Auto F7 Command"
 	)
 
@@ -143,22 +175,31 @@ object KeyCommand : Feature(
 		bindsData.set(gson.toJson(bindings))
 	}
 
+	// The command a key runs, if it runs one. The module keys leave a key that is already a
+	// command key alone: binding a module onto it must never quietly take the command away.
+	fun commandForKey(key: Int): String? =
+		bindings.firstOrNull { it.key == key && it.command.isNotBlank() }?.command
+
 	private fun tick() {
-		if (!enabled) return
 		val mc = Minecraft.getInstance()
 		val window = mc.getWindow()
 
 		// Never fire bindings while any screen (chat, sign, container, etc.) is open,
 		// otherwise typing a bound key would run its command. The key edge is still
-		// consumed so closing the screen doesn't immediately fire a held key.
-		val canFire = mc.gui.screen() == null
-		for (binding in bindings) {
-			if (binding.key <= 0 || binding.command.isBlank()) continue
-			val down = InputConstants.isKeyDown(window, binding.key)
-			val prev = wasDown[binding.key] ?: false
-			wasDown[binding.key] = down
-			if (down && !prev && canFire) runCommand(binding.command)
+		// consumed so closing the screen doesn't immediately fire a held key. The command
+		// keys are their own switch, so they run even with the requeue turned off.
+		if (Access.authorized && bindsEnabled.get()) {
+			val canFire = mc.gui.screen() == null
+			for (binding in bindings) {
+				if (binding.key <= 0 || binding.command.isBlank()) continue
+				val down = InputConstants.isKeyDown(window, binding.key)
+				val prev = wasDown[binding.key] ?: false
+				wasDown[binding.key] = down
+				if (down && !prev && canFire) runCommand(binding.command)
+			}
 		}
+
+		if (!enabled) return
 
 		if (settingAutoF7.get() && !triggered) scanBloodMobs(mc)
 
@@ -199,9 +240,9 @@ object KeyCommand : Feature(
 			if (queueMenu) {
 				escapeAttempts++
 				if (escapeAttempts == 1) {
-					LOGGER.info("[MeowMod] AutoF7: closing the queue menu")
+					LOGGER.info("[MeowMod] Auto Fragrun: closing the queue menu")
 				} else if (escapeAttempts % CLOSE_MENU_LOG_EVERY == 0) {
-					LOGGER.info("[MeowMod] AutoF7: the queue menu keeps coming back, closing it again (attempt $escapeAttempts)")
+					LOGGER.info("[MeowMod] Auto Fragrun: the queue menu keeps coming back, closing it again (attempt $escapeAttempts)")
 				}
 				menu.onClose()
 			}
@@ -232,7 +273,7 @@ object KeyCommand : Feature(
 		for (entity in level.getEntities(player, area) { it !== player }) {
 			val name = entity.name.string
 			if (name.isEmpty()) continue
-			if (seenNames.add(name)) LOGGER.info("[MeowMod] AutoF7: saw entity \"$name\"")
+			if (seenNames.add(name)) LOGGER.info("[MeowMod] Auto Fragrun: saw entity \"$name\"")
 			val lower = name.lowercase()
 			if (giantNames.any { lower.contains(it) }) giantAlive = true
 			if (miniNames.any { lower.contains(it) }) miniAlive = true
@@ -244,7 +285,7 @@ object KeyCommand : Feature(
 		if (giantSeen && miniSeen && !giantAlive && !miniAlive) {
 			triggered = true
 			pendingTrigger = true
-			LOGGER.info("[MeowMod] AutoF7: giant + miniboss killed, requeuing")
+			LOGGER.info("[MeowMod] Auto Fragrun: giant + miniboss killed, requeuing")
 		}
 	}
 
@@ -279,14 +320,14 @@ object KeyCommand : Feature(
 		loggedScreen = null
 		queued = false
 		escapeAttempts = 0
-		LOGGER.info("[MeowMod] AutoF7: requeue attempt $requeueAttempts")
+		LOGGER.info("[MeowMod] Auto Fragrun: requeue attempt $requeueAttempts")
 		sendRequeueCommand(mc)
 	}
 
 	// Failsafe retry: same as a fresh attempt, but bounded so we never spam forever.
 	private fun retryRequeue(mc: Minecraft, why: String) {
 		if (requeueAttempts >= MAX_REQUEUE_ATTEMPTS) {
-			LOGGER.info("[MeowMod] AutoF7: giving up after $requeueAttempts attempts ($why)")
+			LOGGER.info("[MeowMod] Auto Fragrun: giving up after $requeueAttempts attempts ($why)")
 			stopRequeue()
 			return
 		}
@@ -296,7 +337,7 @@ object KeyCommand : Feature(
 		loggedScreen = null
 		queued = false
 		escapeAttempts = 0
-		LOGGER.info("[MeowMod] AutoF7: retry $requeueAttempts ($why)")
+		LOGGER.info("[MeowMod] Auto Fragrun: retry $requeueAttempts ($why)")
 		sendRequeueCommand(mc)
 	}
 
@@ -323,7 +364,7 @@ object KeyCommand : Feature(
 		if (down && !escapeDown) {
 			escapePresses++
 			if (escapePresses >= 2) {
-				LOGGER.info("[MeowMod] AutoF7: player pressed ESC twice, stopping requeue")
+				LOGGER.info("[MeowMod] Auto Fragrun: player pressed ESC twice, stopping requeue")
 				stopRequeue()
 			}
 		}
@@ -337,13 +378,13 @@ object KeyCommand : Feature(
 		if (!enteredPattern.containsMatchIn(text)) return
 		val name = Minecraft.getInstance().user.name
 		if (name.isNotEmpty() && !text.contains(name)) return
-		LOGGER.info("[MeowMod] AutoF7: requeue confirmed (\"$text\")")
+		LOGGER.info("[MeowMod] Auto Fragrun: requeue confirmed (\"$text\")")
 		stopRequeue()
 	}
 
 	private fun confirmMenu(mc: Minecraft) {
 		if (System.currentTimeMillis() > confirmCooldown + 6000L) {
-			LOGGER.info("[MeowMod] AutoF7: timed out waiting for join menu")
+			LOGGER.info("[MeowMod] Auto Fragrun: timed out waiting for join menu")
 			awaitingConfirm = false
 			retryRequeue(mc, "join menu never appeared")
 			return
@@ -353,13 +394,13 @@ object KeyCommand : Feature(
 			loggedScreen = screen
 			val container = screen as? AbstractContainerScreen<*>
 			if (container == null) {
-				LOGGER.info("[MeowMod] AutoF7: screen ${screen.javaClass.simpleName} (not a container)")
+				LOGGER.info("[MeowMod] Auto Fragrun: screen ${screen.javaClass.simpleName} (not a container)")
 			} else {
-				LOGGER.info("[MeowMod] AutoF7: menu \"${container.title.string}\" slots=${container.menu.slots.size}")
+				LOGGER.info("[MeowMod] Auto Fragrun: menu \"${container.title.string}\" slots=${container.menu.slots.size}")
 				for (i in container.menu.slots.indices) {
 					val stack = container.menu.slots[i].item
 					if (stack.isEmpty) continue
-					LOGGER.info("[MeowMod] AutoF7:   slot $i = ${stack.item} \"${stack.hoverName.string}\"")
+					LOGGER.info("[MeowMod] Auto Fragrun:   slot $i = ${stack.item} \"${stack.hoverName.string}\"")
 				}
 			}
 		}
@@ -380,7 +421,7 @@ object KeyCommand : Feature(
 		} ?: return
 
 		mc.gameMode?.handleContainerInput(menu.containerId, target, 0, ContainerInput.PICKUP, player)
-		LOGGER.info("[MeowMod] AutoF7: clicked join button at slot $target")
+		LOGGER.info("[MeowMod] Auto Fragrun: clicked join button at slot $target")
 		awaitingConfirm = false
 		// Wait for Hypixel's "entered The Catacombs" message; if it never comes the
 		// requeue is retried (see tick()).
@@ -399,7 +440,7 @@ object KeyCommand : Feature(
 		if (queued) return
 		queued = true
 		enterDeadline = System.currentTimeMillis() + QUEUE_TIMEOUT
-		LOGGER.info("[MeowMod] AutoF7: party is queued, waiting for the dungeon entry")
+		LOGGER.info("[MeowMod] Auto Fragrun: party is queued, waiting for the dungeon entry")
 	}
 
 	// Hypixel swaps the join menu for a map that counts the instance down - "Creating

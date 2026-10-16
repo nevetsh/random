@@ -17,10 +17,11 @@ import org.slf4j.LoggerFactory
 // this checks the hand that is actually interacting, so a pearl in the off hand counts.
 object NoInteract : Feature(
 	"noInteract",
-	"With a pearl in hand, blocks you click are not interacted with.",
+	"Blocks aren't used while holding a pearl.",
 	subcategory = "General",
 	displayName = "No Interact",
-	enabledByDefault = true
+	enabledByDefault = true,
+	heading = "Misc"
 ) {
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 

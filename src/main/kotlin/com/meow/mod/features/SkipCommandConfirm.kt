@@ -10,10 +10,11 @@ import com.meow.mod.Access
 // still behave normally.
 object SkipCommandConfirm : Feature(
 	"skipCommandConfirm",
-	"Skips the confirm popup for commands the client doesn't know.",
+	"No confirm popup for unknown commands.",
 	subcategory = "General",
-	displayName = "Skip Command Confirmation",
-	enabledByDefault = true
+	displayName = "No Command Confirmation",
+	enabledByDefault = true,
+	heading = "Misc"
 ) {
 	@JvmStatic
 	fun isActive(): Boolean = configSwitch.get() && Access.authorized

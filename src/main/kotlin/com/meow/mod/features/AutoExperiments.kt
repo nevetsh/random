@@ -14,37 +14,37 @@ import java.util.concurrent.ConcurrentHashMap
 // Ported from OdinClient (skies-starred/OdinClient, BSD-3-Clause)
 object AutoExperiments : Feature(
 	"autoExperiments",
-	"Automatically solves the Chronomatron and Ultrasequencer experiments.",
+	"Solves Chronomatron and Ultrasequencer.",
 	subcategory = "Auto Experiments",
 	displayName = "Auto Experiments",
 	enabledByDefault = true
 ) {
 	private val clickDelay = addSlider(
 		"clickDelay", 150.0, 100.0, 1000.0,
-		"Time in ms between automatic test clicks.", "Click Delay"
+		"Delay between clicks.", "Click Delay"
 	)
 	private val delayVariety = addSlider(
 		"delayVariety", 50.0, 0.0, 1000.0,
-		"Random variance added to the click delay.", "Delay Variety"
+		"Random variance on the delay.", "Delay Variety"
 	)
 	private val autoClose = addSwitch(
 		"autoClose", true,
-		"Automatically close the GUI after completing the experiment.", "Auto Close"
+		"Close the GUI when done.", "Auto Close"
 	)
 	private val serumCount = addSlider(
 		"serumCount", 0.0, 0.0, 3.0,
-		"Consumed Metaphysical Serum count (reduces the required rounds).", "Serum Count"
+		"Serum used, fewer rounds needed.", "Serum Count"
 	)
 	private val getMaxXp = addSwitch(
 		"getMaxXp", false,
-		"Solve Chronomatron to 15 and Ultrasequencer to 20 for max XP.", "Get Max XP"
+		"Solve both to their max rounds.", "Get Max XP"
 	)
 	// Off by default: the module's own pacing is the ported OdinClient behaviour and it is left
 	// exactly as it is. This only adds a second opinion on top of it for a slow connection.
 	private val verifyClicks = addSwitch(
 		"verifyClicks",
 		false,
-		"Wait for the game to answer a click before the next. Off: original pacing.",
+		"Wait for the game to answer each click.",
 		"Wait For Click To Land"
 	)
 
