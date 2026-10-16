@@ -32,7 +32,7 @@ object KeyCommand : Feature(
 
 	private val bindsData = addText(
 		"binds",
-		"[{\"key\":89,\"command\":\"joindungeon catacombs 7\"},{\"key\":0,\"command\":\"\"}]",
+		"[{\"key\":89,\"command\":\"joindungeon catacombs 7\"}]",
 		"Open the editor below to add/remove key -> command bindings.",
 		"Bindings"
 	)

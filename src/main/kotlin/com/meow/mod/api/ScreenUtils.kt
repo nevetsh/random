@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.world.inventory.ContainerInput
+import net.minecraft.world.inventory.Slot
 
 object ScreenUtils {
 	// The player's own inventory is the last 36 slots of these menus, and its contents are not
@@ -57,4 +58,13 @@ object ScreenUtils {
 	// The menu on screen, if one is open at all.
 	fun container(): AbstractContainerScreen<*>? =
 		Minecraft.getInstance().gui.screen() as? AbstractContainerScreen<*>
+
+	// The player's own inventory in a menu, which is the last PLAYER_SLOTS slots of it. A
+	// Bazaar cancel hands an item back here, and Auto BZ opens a product's page by clicking
+	// that item, so where the player's own slots start is decided in this one place.
+	fun inventorySlots(container: AbstractContainerScreen<*>): List<Slot> {
+		val own = (container.menu.slots.size - PLAYER_SLOTS).coerceAtLeast(0)
+		return container.menu.slots.filter { it.index >= own }
+	}
+
 }

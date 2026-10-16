@@ -20,7 +20,7 @@ object NoInteract : Feature(
 	"With a pearl in hand, blocks you click are not interacted with.",
 	subcategory = "General",
 	displayName = "No Interact",
-	enabledByDefault = false
+	enabledByDefault = true
 ) {
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 

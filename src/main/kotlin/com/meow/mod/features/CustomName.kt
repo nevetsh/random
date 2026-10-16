@@ -11,7 +11,7 @@ import net.minecraft.util.FormattedCharSequence
 object CustomName : Feature(
 	"customName",
 	"Shows a custom name instead of yours, and redirects those commands.",
-	subcategory = "Custom Name",
+	subcategory = "General",
 	displayName = "Custom Name",
 	enabledByDefault = true
 ) {

@@ -11,7 +11,7 @@ import com.meow.mod.Access
 object SkipCommandConfirm : Feature(
 	"skipCommandConfirm",
 	"Skips the confirm popup for commands the client doesn't know.",
-	subcategory = "Command QoL",
+	subcategory = "General",
 	displayName = "Skip Command Confirmation",
 	enabledByDefault = true
 ) {

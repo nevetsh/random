@@ -13,6 +13,7 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen
+import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
 import org.slf4j.LoggerFactory
 
@@ -23,6 +24,27 @@ import org.slf4j.LoggerFactory
 // button and submit. This module remembers what you cancelled and walks that path for
 // you, for buy orders and for sell offers alike - the two differ only in which create
 // button and which submit item they use.
+//
+// How that walk gets to the product's page is a choice. A sell offer hands the product back
+// into the player's own inventory, and on the Bazaar's main menu - the one carrying the
+// search sign - a left-click on that item opens its page, so "Re-place From Inventory" takes
+// that click. "Re-place From Open Menu" takes the product's own entry in the menu just as it
+// is on screen. Whichever is taken falls back to the search sign when the product is not
+// where it was expected - and, for a sell offer, that is the only fallback: clicking the
+// product's entry in a menu that still lists other orders for it is how the wrong order was
+// opened, so a sell offer that cannot be listed from the inventory is searched for instead.
+//
+// Auto Sell is the same walk started the other way round: CTRL plus a left-click on an item
+// in the player's own inventory on that menu asks the Bazaar for the item's page, and the run
+// takes it from there - create sell offer, the sell price option, submit. Nothing was
+// cancelled, so the number to sell is the Bazaar's own: the create button states how many it
+// is about to offer, and the price selection is checked against that number.
+// The inventory click is a sell offer's route: a cancelled buy order hands back coins, and
+// the stacks that come with it are items to claim, which belong to their own orders rather
+// than to the product. It is also only made on the main menu, and never on a stack that
+// states an amount of its own that is not this order's, since on every other menu a product
+// name is on other people's orders - "BUY Rejuvenate I" is on the 109x order as well as on
+// the 246x one, and clicking the wrong one re-places or claims that order instead.
 //
 // The whole thing is gated on CTRL: hold it while clicking cancel and the order is
 // re-placed, click cancel without it (or with the module off) and the cancel is left
@@ -68,6 +90,18 @@ object AutoBz : Feature(
 		"Click the cancelled product in the open menu instead of searching.",
 		"Re-place From Open Menu"
 	)
+	private val inventoryRelist = addSwitch(
+		"inventoryRelist",
+		false,
+		"Left-click the cancelled item in your inventory on the Bazaar menu, for sell offers.",
+		"Re-place From Inventory"
+	)
+	private val autoSell = addSwitch(
+		"autoSell",
+		true,
+		"Hold CTRL and left-click an item in your inventory to offer it for sale.",
+		"Auto Sell"
+	)
 	private val startDelay = addSlider(
 		"startDelay",
 		600.0,
@@ -77,7 +111,7 @@ object AutoBz : Feature(
 	)
 	private val stepDelay = addSlider(
 		"stepDelay",
-		550.0,
+		600.0,
 		100.0, 1500.0,
 		"Minimum spacing between clicks. Steps also wait for their menu.",
 		"Step Delay (ms)"
@@ -113,7 +147,7 @@ object AutoBz : Feature(
 		val remaining: Int? get() = amount?.let { (it - filled).coerceAtLeast(0) }
 	}
 
-	private enum class Step { LIST, SEARCH, QUERY_SIGN, RESULT, CREATE, QUANTITY, AMOUNT_SIGN, PRICE, SUBMIT }
+	private enum class Step { INVENTORY, LIST, SEARCH, QUERY_SIGN, RESULT, CREATE, QUANTITY, AMOUNT_SIGN, PRICE, SUBMIT }
 
 	private const val BUY = "BUY"
 	private const val SELL = "SELL"
@@ -153,6 +187,11 @@ object AutoBz : Feature(
 	// Set while the short way is being tried, so a page that turns out not to carry the
 	// create button can still fall back to the search instead of giving up.
 	private var canFallbackToSearch = false
+
+	// Set while the run is an Auto Sell listing rather than a re-place. It is what tells the
+	// create step to take the number to sell off its own button, and what the messages call the
+	// run, since nothing was cancelled and nothing is being put back.
+	private var autoSellRun = false
 
 	// When a CTRL cancel click happened, so the Bazaar's confirmation that follows can be
 	// tied to it.
@@ -234,6 +273,10 @@ object AutoBz : Feature(
 	// The "1x Rejuvenate V" a cancelled sell offer hands back.
 	private val REFUNDED_ITEM = Regex("^([\\d,]+)x\\s+(.+)$", RegexOption.IGNORE_CASE)
 
+	// "Inventory: 2 items" on a create button, which is how many the Bazaar is about to offer
+	// for sale when the offer is made from the inventory.
+	private val INVENTORY_COUNT = Regex("Inventory:\\s*([\\d,]+)\\s+items?", RegexOption.IGNORE_CASE)
+
 	// The amount a screen states for the order it is about to place. The confirmation says
 	// "Selling: 4x Rejuvenate V" on its submit button, and a price selection that skipped the
 	// amount menu says "Selling: 1x" on each of its options. Anchored, so a product page's
@@ -268,7 +311,7 @@ object AutoBz : Feature(
 	// Called from ContainerClickMixin for every slot the player clicks. This is where the
 	// cancel is noticed: the order entry stages the details, the cancel button arms the
 	// restore.
-	fun onContainerSlotClicked(stack: ItemStack) {
+	fun onContainerSlotClicked(stack: ItemStack, slotIndex: Int, button: Int, clickType: ContainerInput) {
 		if (!enabled || !Access.authorized) return
 		val name = itemName(stack)
 		if (name.isEmpty()) return
@@ -293,7 +336,12 @@ object AutoBz : Feature(
 			return
 		}
 
-		if (!isCancelItem(name, lore)) return
+		if (!isCancelItem(name, lore)) {
+			// Not a cancel and not an order entry, so this is either a click on the Bazaar's
+			// own menu or one on the player's items; only the second can be a request to sell.
+			onInventoryClickForSell(stack, slotIndex, button, clickType)
+			return
+		}
 
 		// Only step in when the player asks for it, by holding CTRL on the cancel click.
 		// A cancel without the modifier is just a normal cancel and is left alone, and
@@ -307,6 +355,31 @@ object AutoBz : Feature(
 		// message that follows, and that is what gets re-placed.
 		armedAt = System.currentTimeMillis()
 		LOGGER.info("[MeowMod] AutoBZ: cancel clicked with CTRL held, waiting for the Bazaar to confirm what it cancelled")
+	}
+
+	// Auto Sell. The Bazaar opens a product's page from a left-click on an item in the player's
+	// own inventory, and that only holds on its own menu - the one carrying the search sign -
+	// so the gesture is CTRL plus such a click there. Anywhere else the same click is a click
+	// on an order list or a price menu, and is left completely alone.
+	private fun onInventoryClickForSell(stack: ItemStack, slotIndex: Int, button: Int, clickType: ContainerInput) {
+		if (!autoSell.get()) return
+		if (active != null) return
+		if (button != 0 || clickType != ContainerInput.PICKUP) return
+		if (!isControlDown()) return
+		val container = ScreenUtils.container() ?: return
+		if (searchSignSlot(container) == null) return
+		if (ScreenUtils.inventorySlots(container).none { it.index == slotIndex }) return
+		val name = itemName(stack)
+		LOGGER.info("[MeowMod] AutoBZ: Auto Sell: CTRL-clicked \"$name\" x${stack.count} in the inventory (slot $slotIndex)")
+		startSell(name)
+	}
+
+	// A listing has nothing to re-place, so it starts where the click left off - the product's
+	// page - and walks the same three screens a cancel does: create, price, submit. Neither
+	// the product's name nor the number to sell is known yet; the create button states both.
+	private fun startSell(name: String) {
+		LOGGER.info("[MeowMod] AutoBZ: Auto Sell: offering \"$name\"")
+		begin(Order(SELL, "", null, 0, null), Step.CREATE, "&7Offering &f$name&7 on the Bazaar...", selling = true)
 	}
 
 	// The Bazaar's own confirmation is what Auto BZ acts on: it names the side of the
@@ -422,10 +495,31 @@ object AutoBz : Feature(
 		start(order)
 	}
 
+	// Re-placing a cancelled order: a sell offer is opened from the item the cancel handed
+	// back to the inventory when that route is on, otherwise from the product's own entry in
+	// the menu the cancel left behind, otherwise by searching for it. A cancelled buy order
+	// has no stack of the product to open, so it goes straight to those last two.
 	private fun start(order: Order) {
+		val first = when {
+			inventoryRelist.get() && !isBuy(order) -> Step.INVENTORY
+			fastRelist.get() -> Step.LIST
+			else -> Step.SEARCH
+		}
+		LOGGER.info("[MeowMod] AutoBZ: {} {}x {} (from {})", verb(order), order.remaining, order.product, first.name.lowercase())
+		begin(
+			order,
+			first,
+			"&7${verb(order).replaceFirstChar { it.uppercase() }} &f${order.remaining}x ${order.product}&7...&8 (${order.filled} of ${order.amount} already filled)"
+		)
+	}
+
+	// What every run shares, whichever screen it starts on and whoever asked for it: the order
+	// being worked on, the step it starts at, and the clocks the steps are paced by.
+	private fun begin(order: Order, first: Step, message: String, selling: Boolean = false) {
 		active = order
-		step = if (fastRelist.get()) Step.LIST else Step.SEARCH
-		canFallbackToSearch = fastRelist.get()
+		autoSellRun = selling
+		step = first
+		canFallbackToSearch = !selling && first != Step.SEARCH
 		clearPending()
 		totalPrice = null
 		chosenUnitPrice = null
@@ -434,8 +528,7 @@ object AutoBz : Feature(
 		stepStart = now
 		stepAt = now + humanDelay(startDelay.get().toLong())
 		deadline = now + TOTAL_TIMEOUT
-		LOGGER.info("[MeowMod] AutoBZ: {} {}x {}", verb(order), order.remaining, order.product)
-		ChatUtils.sendMessage("&7${verb(order).replaceFirstChar { it.uppercase() }} &f${order.remaining}x ${order.product}&7...&8 (${order.filled} of ${order.amount} already filled)", true)
+		ChatUtils.sendMessage(message, true)
 	}
 
 	private fun reset() {
@@ -450,6 +543,7 @@ object AutoBz : Feature(
 		armedAt = 0L
 		pendingSignText = null
 		canFallbackToSearch = false
+		autoSellRun = false
 		clearPending()
 	}
 
@@ -498,6 +592,41 @@ object AutoBz : Feature(
 		}
 
 		when (step) {
+			// A sell offer hands the item back into the player's own inventory, and on the
+			// Bazaar's main menu a left-click on that item opens its page - the page the search
+			// would have ended on. The main menu is the one that carries the search sign, and it
+			// has to be the menu this is done on: everywhere else in the Bazaar a product name is
+			// on other people's orders, so the same name that is the refunded stack here is a
+			// different order there. The stack is then picked by what it says about itself, and
+			// given a moment first, since the refund and the confirmation that starts this run
+			// are separate packets. When it cannot be done at all - no sign, no stack of this
+			// order - the search sign is the way on, and never a menu's own entry: those are the
+			// lists where the wrong order for the same product sits.
+			Step.INVENTORY -> {
+				val container = screen as? AbstractContainerScreen<*>
+				if (container == null) {
+					advance(Step.LIST)
+					return
+				}
+				if (searchSignSlot(container) == null) {
+					if (now - stepStart < SETTLE_MS) return
+					LOGGER.info("[MeowMod] AutoBZ: no \"$SEARCH_NAME\" sign in \"${screenTitle(container)}\", so this is not the menu the cancelled item is clicked on")
+					advance(Step.SEARCH)
+					return
+				}
+				val slot = inventoryProductSlot(container, order)
+				if (slot == null) {
+					if (now - stepStart < SETTLE_MS) return
+					LOGGER.info("[MeowMod] AutoBZ: no stack of this \"${order.product}\" order in the inventory, searching for it")
+					advance(Step.SEARCH)
+					return
+				}
+				LOGGER.info("[MeowMod] AutoBZ: opening \"${order.product}\" from the inventory on \"${screenTitle(container)}\" (slot $slot)")
+				ScreenUtils.click(slot, false)
+				noteClicked(signature)
+				advance(Step.CREATE)
+			}
+
 			// The cancel has just happened, so the Bazaar is usually still showing the menu it
 			// came from and the cancelled product is one left-click away from its own page on
 			// there - the same page the search would end on, without the sign, the typing and
@@ -509,7 +638,7 @@ object AutoBz : Feature(
 					advance(Step.SEARCH)
 					return
 				}
-				val slot = productEntrySlot(container, order.product)
+				val slot = productEntrySlot(container, order)
 				if (slot == null) {
 					LOGGER.info("[MeowMod] AutoBZ: no \"${order.product}\" in \"${screenTitle(container)}\", searching for it")
 					advance(Step.SEARCH)
@@ -528,7 +657,7 @@ object AutoBz : Feature(
 					waitOrFail(order, "no Bazaar menu is open")
 					return
 				}
-				val slot = slotWhere(container) { stack, _ -> itemName(stack).equals(SEARCH_NAME, true) }
+				val slot = searchSignSlot(container)
 				if (slot == null) {
 					waitOrFail(order, "no \"$SEARCH_NAME\" button in \"${screenTitle(container)}\"")
 					return
@@ -592,6 +721,21 @@ object AutoBz : Feature(
 					waitOrFail(order, "no \"${createButton(order)}\" button in \"${screenTitle(container)}\"")
 					return
 				}
+				// A listing does not know the number to sell until here: the button says how many
+				// the Bazaar is about to offer ("Inventory: 2 items"), and the price selection is
+				// checked against that number, so it is taken before the click and the step re-runs
+				// with it. A button that says nothing leaves the amount unknown, and then the
+				// selection is taken as the Bazaar leaves it - the same as clicking it by hand.
+				if (autoSellRun && order.amount == null) {
+					val button = container.menu.slots.first { it.index == slot }.item
+					val count = amountFrom(INVENTORY_COUNT, ItemUtils.lore(button))
+					if (count != null && count > 0) {
+						LOGGER.info("[MeowMod] AutoBZ: the create button is offering ${count}x, which the price selection is checked against")
+						active = order.copy(amount = count)
+						return
+					}
+					LOGGER.info("[MeowMod] AutoBZ: the create button does not say how many it is offering, so the amount is taken as the Bazaar leaves it")
+				}
 				LOGGER.info("[MeowMod] AutoBZ: clicking \"${createButton(order)}\" (slot $slot)")
 				ScreenUtils.click(slot, false)
 				noteClicked(signature)
@@ -603,8 +747,14 @@ object AutoBz : Feature(
 			Step.QUANTITY -> {
 				val sign = screen as? AbstractSignEditScreen
 				if (sign != null) {
-					// Items without a preset menu ask for the amount straight away.
-					submitSign(sign, order.remaining.toString())
+					// Items without a preset menu ask for the amount straight away. A listing whose
+					// number never turned up stops here rather than writing one nobody asked for.
+					val wanted = order.remaining
+					if (wanted == null) {
+						fail(order, "the amount menu opened, but nothing said how many to sell")
+						return
+					}
+					submitSign(sign, wanted.toString())
 					advance(Step.PRICE)
 					return
 				}
@@ -754,9 +904,13 @@ object AutoBz : Feature(
 					fail(order, "the confirmation is at $confirmed coins per unit but I picked $picked")
 					return
 				}
+				// A listing never learned the product's name on the page it started from, and the
+				// confirmation states it ("Selling: 2x Rejuvenate V"), so the closing message can
+				// name the item that was actually submitted rather than just "the item".
+				val named = if (autoSellRun && order.product.isEmpty()) statedProduct(stack) else null
 				LOGGER.info("[MeowMod] AutoBZ: submitting at slot $slot (${confirmed ?: "unknown"} coins per unit)")
 				ScreenUtils.click(slot, false)
-				finish(order)
+				finish(if (named == null) order else order.copy(product = named))
 			}
 		}
 	}
@@ -801,11 +955,16 @@ object AutoBz : Feature(
 	}
 
 	private fun finish(order: Order) {
+		// A listing's number is the Bazaar's own, and a button that said nothing leaves it
+		// unknown, so both the log and the message say what the run actually did rather than
+		// printing a null.
+		val amount = order.remaining?.let { "${it}x " } ?: ""
+		val product = order.product.ifEmpty { "the item" }
 		LOGGER.info(
-			"[MeowMod] AutoBZ: submitted {}x {} for {} (order {} minus {} filled)",
-			order.remaining, order.product, totalPrice ?: "an unknown total", order.amount, order.filled
+			"[MeowMod] AutoBZ: submitted {}{} for {} (order {} minus {} filled)",
+			amount, product, totalPrice ?: "an unknown total", order.amount, order.filled
 		)
-		ChatUtils.sendMessage("&a${verb(order).replaceFirstChar { it.uppercase() }} &f${order.remaining}x ${order.product}&a for &f${totalPrice ?: "?"}&a coins.", true)
+		ChatUtils.sendMessage("&a${verb(order).replaceFirstChar { it.uppercase() }} &f$amount$product&a for &f${totalPrice ?: "?"}&a coins.", true)
 		reset()
 	}
 
@@ -853,15 +1012,28 @@ object AutoBz : Feature(
 
 	// How many of the product the item at that slot says it is about to place, read out of
 	// "Selling: 4x Rejuvenate V" or "Selling: 1x". A line that names no product is taken as
-	// this order's own, since the screen it is on was reached through that product's page.
+	// this order's own, since the screen it is on was reached through that product's page - and
+	// so is a line that names one when the product is not known yet, because a listing only
+	// ever got here through the item's own page, so whatever it names is that item.
 	private fun statedAmount(container: AbstractContainerScreen<*>, order: Order, slot: Int): Int? {
 		val stack = container.menu.slots.firstOrNull { it.index == slot }?.item ?: return null
 		for (line in ItemUtils.lore(stack)) {
 			val match = STATED_AMOUNT.find(line) ?: continue
 			val product = match.groupValues[2].trim()
-			if (product.isEmpty() || product.equals(order.product, ignoreCase = true)) {
+			if (product.isEmpty() || order.product.isEmpty() || product.equals(order.product, ignoreCase = true)) {
 				return digits(match.groupValues[1])
 			}
+		}
+		return null
+	}
+
+	// The product a "Selling: 2x Rejuvenate V" line names, which is the only place a listing
+	// can learn what it is putting up: it started from the item's page, not from a name it
+	// looked up.
+	private fun statedProduct(stack: ItemStack): String? {
+		for (line in ItemUtils.lore(stack)) {
+			val product = STATED_AMOUNT.find(line)?.groupValues?.get(2)?.trim()
+			if (!product.isNullOrEmpty()) return product
 		}
 		return null
 	}
@@ -874,16 +1046,57 @@ object AutoBz : Feature(
 	// behind it is the product's own page on either side, so only the name has to match. The
 	// prefix is stripped before comparing, since an entry for "Rejuvenate IX" also contains
 	// "Rejuvenate I".
-	private fun productEntrySlot(container: AbstractContainerScreen<*>, product: String): Int? {
+	//
+	// An entry that states an amount or a filled count of its own has to be this order's: the
+	// same product name is on every other order for it, and opening one of those re-places that
+	// order (or hands back its items) instead of the one that was cancelled.
+	private fun productEntrySlot(container: AbstractContainerScreen<*>, order: Order): Int? {
 		for (slot in container.menu.slots) {
 			val stack = slot.item
 			if (stack.isEmpty) continue
 			val name = itemName(stack)
 			val stripped = ORDER_ENTRY.find(name)?.groupValues?.get(2)?.trim() ?: name
-			if (stripped.equals(product, ignoreCase = true)) return slot.index
+			if (!stripped.equals(order.product, ignoreCase = true)) continue
+			if (isAnotherOrder(order, ItemUtils.lore(stack))) {
+				LOGGER.info("[MeowMod] AutoBZ: \"$name\" in \"${screenTitle(container)}\" is a different order for \"${order.product}\", leaving it alone")
+				continue
+			}
+			return slot.index
 		}
 		return null
 	}
+
+	// The stack in the player's own inventory that the cancel handed back. A stack that says
+	// it belongs to a different order is not it, the stack stating this order's own amount
+	// comes first, then the one holding what the confirmation refunded.
+	private fun inventoryProductSlot(container: AbstractContainerScreen<*>, order: Order): Int? {
+		val candidates = ScreenUtils.inventorySlots(container).filter { slot ->
+			val stack = slot.item
+			!stack.isEmpty &&
+				itemName(stack).equals(order.product, ignoreCase = true) &&
+				!isAnotherOrder(order, ItemUtils.lore(stack))
+		}
+		val owned = candidates.firstOrNull { orderAmount(ItemUtils.lore(it.item))?.let { amount -> amount == order.amount } == true }
+		val refunded = candidates.firstOrNull { it.item.count == order.remaining }
+		return (owned ?: refunded ?: candidates.firstOrNull())?.index
+	}
+
+	// Whether a stack's own lines say it is a different order for the same product. An entry
+	// or an item that names an amount this order does not have, or a filled count it does not
+	// have, is another one - the cancelled order is 246x with 5 filled, and the 109x order is
+	// not it, however identical the product name is. A stack that states neither is left to
+	// the caller, which compares names.
+	private fun isAnotherOrder(order: Order, lore: List<String>): Boolean {
+		orderAmount(lore)?.let { stated -> if (order.amount != null && stated != order.amount) return true }
+		filledAmount(lore)?.let { filled -> if (filled.first != order.filled) return true }
+		return false
+	}
+
+	// The Bazaar main menu, which is the one that carries the search sign - the same button
+	// the search route clicks. The sign is what tells it apart from the order lists, where the
+	// product names belong to other people's orders.
+	private fun searchSignSlot(container: AbstractContainerScreen<*>): Int? =
+		slotWhere(container) { stack, _ -> itemName(stack).equals(SEARCH_NAME, ignoreCase = true) }
 
 	// CTRL is the "yes, put this one back" modifier; the cancel click itself stays the
 	// trigger, so nothing happens unless the player is asking for it.
@@ -990,7 +1203,13 @@ object AutoBz : Feature(
 	private fun isCreateButton(order: Order, name: String) =
 		name.contains(createButton(order), ignoreCase = true)
 
-	private fun verb(order: Order) = if (isBuy(order)) "re-placing" else "re-listing"
+	// A listing is not a re-list: nothing was cancelled and the items are ones the player
+	// already had, so the run is named for what it is doing.
+	private fun verb(order: Order) = when {
+		autoSellRun -> "offering"
+		isBuy(order) -> "re-placing"
+		else -> "re-listing"
+	}
 
 	private fun side(kind: String) = if (kind == BUY) "buy order" else "sell offer"
 

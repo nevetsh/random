@@ -9,6 +9,7 @@ import com.meow.mod.features.AutoBz
 import com.meow.mod.features.AutoCombine
 import com.meow.mod.features.AutoExperiments
 import com.meow.mod.features.AutoHarp
+import com.meow.mod.features.AutoSlayer
 import com.meow.mod.features.CustomName
 import com.meow.mod.features.DiscordChat
 import com.meow.mod.features.Feature
@@ -41,7 +42,7 @@ object MeowMod : ClientModInitializer {
 		HideFromServers, AutoCombine, ModUpdater,
 		AutoHarp, AutoExperiments, TriggerBot, WorldScanner,
 		KeyCommand, CustomName, DiscordChat, SkipCommandConfirm,
-		AutoAuction, AutoBz, NoInteract
+		AutoAuction, AutoBz, NoInteract, AutoSlayer
 	)
 
 	override fun onInitializeClient() {
@@ -65,6 +66,7 @@ object MeowMod : ClientModInitializer {
 		DiscordChat.initialize()
 		AutoAuction.initialize()
 		AutoBz.initialize()
+		AutoSlayer.initialize()
 
 		Config.load()
 

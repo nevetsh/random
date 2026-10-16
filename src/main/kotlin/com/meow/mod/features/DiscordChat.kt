@@ -5,6 +5,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.meow.mod.MeowMod
 import com.meow.mod.api.ChatUtils
+import com.meow.mod.api.DiscordRelay
 import com.mojang.brigadier.arguments.StringArgumentType
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument
@@ -24,6 +25,9 @@ import java.util.concurrent.Executors
 // Two-way chat relay between Minecraft and a Discord channel using a bot token.
 // Outgoing: your chat (and party/guild commands) are POSTed to the channel.
 // Incoming: the channel is polled over REST and new messages are shown in chat.
+// /dc and /irc are marked on the way out (see DiscordRelay), which is what lets every client
+// tell them from relayed public chat: they show up in chat on any client running MeowMod with
+// the same channel set, and nowhere else.
 object DiscordChat : Feature(
 	"discordChat",
 	"Relays chat to and from a Discord channel (needs a bot token).",
@@ -69,7 +73,7 @@ object DiscordChat : Feature(
 	private val settingIncoming = addSwitch(
 		"incoming",
 		true,
-		"Show new Discord messages in your Minecraft chat.",
+		"Show new Discord messages, and /dc and /irc lines from other mod users, in chat.",
 		"Relay Incoming"
 	)
 
@@ -179,9 +183,10 @@ object DiscordChat : Feature(
 		} else if (token.isEmpty() || channel.isEmpty()) {
 			source.sendFeedback(ChatUtils.literal("&8[&9Discord&8] &7No bot token/channel set."))
 		} else {
-			relay("${playerName()}: $message")
-			// Mirror what actually landed in Discord instead of a generic "Sent:" line.
-			source.sendFeedback(ChatUtils.literal("&8[&9Discord&8] &b${playerName()}&7: &f$message"))
+			relay(DiscordRelay.direct(playerName(), message))
+			// The very line the other end will show, so the sender sees what the network sees
+			// instead of a "Sent:" confirmation.
+			source.sendFeedback(ChatUtils.literal(DiscordRelay.directLine(playerName(), message)))
 		}
 	}
 
@@ -229,10 +234,24 @@ object DiscordChat : Feature(
 			lastMessageId = id
 
 			val author = message.getAsJsonObject("author") ?: continue
-			if (author.get("id")?.asString == botId) continue
 
 			val content = message.get("content")?.asString ?: continue
 			if (content.isBlank()) continue
+
+			val direct = DiscordRelay.parse(content)
+			if (direct != null) {
+				// A /dc or /irc line. It arrives under the bot's own account, so the sender is read
+				// off the message. This player's own line is skipped: they saw it when they sent it.
+				val (sender, body) = direct
+				if (sender != playerName()) {
+					ChatUtils.sendMessage(ChatUtils.literal(DiscordRelay.directLine(sender, body)))
+				}
+				continue
+			}
+
+			// Anything else the bot has posted is this player's own public chat being relayed, and
+			// the server already showed that in game. Only real Discord users are shown here.
+			if (author.get("id")?.asString == botId) continue
 
 			val name = author.get("global_name")?.takeIf { !it.isJsonNull }?.asString
 				?: author.get("username")?.asString

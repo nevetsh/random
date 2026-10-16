@@ -33,6 +33,9 @@ public class ContainerClickMixin {
 		ItemStack stack = slot.getItem();
 		if (stack.isEmpty()) return;
 		AutoAuction.INSTANCE.onContainerSlotClicked(stack.getHoverName().getString());
-		AutoBz.INSTANCE.onContainerSlotClicked(stack);
+		// Auto BZ needs to know which slot was clicked and how: an Auto Sell listing starts
+		// from a left-click on one of the player's own inventory slots, and an order entry or
+		// a cancel button is never one of those.
+		AutoBz.INSTANCE.onContainerSlotClicked(stack, slotId, button, clickType);
 	}
 }
