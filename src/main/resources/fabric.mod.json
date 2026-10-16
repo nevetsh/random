@@ -1,0 +1,31 @@
+{
+	"schemaVersion": 1,
+	"id": "meowmod",
+	"version": "${version}",
+	"name": "MeowMod",
+	"description": "Standalone AutoCombine for Hypixel Skyblock with a Devonian-style GUI.",
+	"authors": [
+		"Steven"
+	],
+	"contact": {},
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			{
+				"value": "com.meow.mod.MeowMod",
+				"adapter": "kotlin"
+			}
+		]
+	},
+	"mixins": [
+		"meowmod.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2-",
+		"java": ">=25",
+		"fabric-api": "*",
+		"fabric-language-kotlin": "*"
+	}
+}
