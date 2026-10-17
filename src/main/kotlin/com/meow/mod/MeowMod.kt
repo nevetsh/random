@@ -11,11 +11,9 @@ import com.meow.mod.features.AutoCombine
 import com.meow.mod.features.AutoExperiments
 import com.meow.mod.features.AutoFragrun
 import com.meow.mod.features.AutoHarp
-import com.meow.mod.features.AutoHeal
 import com.meow.mod.features.AutoReforge
 import com.meow.mod.features.AutoSalvage
 import com.meow.mod.features.AutoSlayer
-import com.meow.mod.features.Combat
 import com.meow.mod.features.CustomName
 import com.meow.mod.features.DiscordChat
 import com.meow.mod.features.FastPets
@@ -26,7 +24,6 @@ import com.meow.mod.features.ModUpdater
 import com.meow.mod.features.ModuleKeys
 import com.meow.mod.features.NoInteract
 import com.meow.mod.features.SkipCommandConfirm
-import com.meow.mod.features.TriggerBot
 import com.meow.mod.features.WorldScanner
 import com.meow.mod.skyblock.LocationUtils
 import net.fabricmc.api.ClientModInitializer
@@ -52,19 +49,15 @@ object MeowMod : ClientModInitializer {
 	// module can add one to General from anywhere.
 	private val allFeatures: List<Feature> = listOf(
 		AutoFragrun, HideFromServers, AutoCombine, ModUpdater,
-		AutoHarp, AutoExperiments, TriggerBot, AutoClick, WorldScanner,
+		AutoHarp, AutoExperiments, AutoClick, WorldScanner,
 		CustomName, DiscordChat, NoInteract, SkipCommandConfirm, HideServerId,
-		AutoAuction, AutoBz, AutoSlayer, AutoSalvage, AutoReforge, AutoHeal, Combat
+		AutoAuction, AutoBz, AutoSlayer, AutoSalvage, AutoReforge
 	)
 
 	override fun onInitializeClient() {
 		// The General page is split into named groups, listed in this order however the modules
 		// happen to register their settings.
 		Config.declareHeadings(Config.GENERAL, "Mod Information", "Keybinds", "Cosmetics", "Misc")
-
-		// The Auto Click page holds three modules - the held-button clicker, the trigger bot
-		// and the combat clicker - split into a group each.
-		Config.declareHeadings("Auto Click", "Auto Click", "Trigger Bot", "Combat")
 
 		Access.check(Minecraft.getInstance().user.profileId)
 
@@ -80,7 +73,6 @@ object MeowMod : ClientModInitializer {
 		AutoCombine.initialize()
 		AutoHarp.initialize()
 		AutoExperiments.initialize()
-		TriggerBot.initialize()
 		AutoClick.initialize()
 		WorldScanner.initialize()
 		AutoFragrun.initialize()
@@ -91,8 +83,6 @@ object MeowMod : ClientModInitializer {
 		AutoSlayer.initialize()
 		AutoSalvage.initialize()
 		AutoReforge.initialize()
-		AutoHeal.initialize()
-		Combat.initialize()
 		FastPets.initialize()
 
 		Config.load()

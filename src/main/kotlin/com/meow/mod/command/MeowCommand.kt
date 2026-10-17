@@ -1,8 +1,6 @@
 package com.meow.mod.command
 
 import com.mojang.brigadier.arguments.StringArgumentType
-import com.meow.mod.api.ActionBar
-import com.meow.mod.api.ChatUtils
 import com.meow.mod.features.AutoBz
 import com.meow.mod.features.AutoClick
 import com.meow.mod.features.FastPets
@@ -26,14 +24,6 @@ object MeowCommand {
 						// when Auto Re-place is turned off.
 						.then(							literal("restore").executes {
 								AutoBz.restoreLast()
-								1
-							}
-						)
-						// Dumps what the action bar last said, so the stat reading Auto Heal
-						// gates on can be checked in game.
-						.then(
-							literal("testvitality").executes {
-								ChatUtils.sendMessage(ActionBar.describe(), true)
 								1
 							}
 						)

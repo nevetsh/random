@@ -11,9 +11,7 @@
 		"PlayerTabOverlayMixin",
 		"ReforgeOverlayMixin",
 		"SignEditScreenMixin",
-		"UseBlockMixin",
-		"ActionBarMixin",
-		"AttackMixin"
+		"UseBlockMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
