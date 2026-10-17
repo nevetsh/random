@@ -22,7 +22,6 @@ import com.meow.mod.features.HideFromServers
 import com.meow.mod.features.HideServerId
 import com.meow.mod.features.ModUpdater
 import com.meow.mod.features.ModuleKeys
-import com.meow.mod.features.NoInteract
 import com.meow.mod.features.SkipCommandConfirm
 import com.meow.mod.features.TriggerBot
 import com.meow.mod.features.WorldScanner
@@ -45,13 +44,12 @@ object MeowMod : ClientModInitializer {
 			.orElse("dev")
 
 	// Modules are built in this order, and inside a heading of the General page that is also the
-	// order the settings are listed in: it is what puts No Interact above No Command
-	// Confirmation. Which heading a setting belongs to is declared on the setting itself, so a
-	// module can add one to General from anywhere.
+	// order the settings are listed in. Which heading a setting belongs to is declared on the
+	// setting itself, so a module can add one to General from anywhere.
 	private val allFeatures: List<Feature> = listOf(
 		AutoFragrun, HideFromServers, AutoCombine, ModUpdater,
 		AutoHarp, AutoExperiments, TriggerBot, AutoClick, WorldScanner,
-		CustomName, DiscordChat, NoInteract, SkipCommandConfirm, HideServerId,
+		CustomName, DiscordChat, SkipCommandConfirm, HideServerId,
 		AutoAuction, AutoBz, AutoSlayer, AutoSalvage, AutoReforge
 	)
 

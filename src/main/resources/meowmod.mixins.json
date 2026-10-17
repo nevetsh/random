@@ -10,8 +10,7 @@
 		"ContainerClickMixin",
 		"PlayerTabOverlayMixin",
 		"ReforgeOverlayMixin",
-		"SignEditScreenMixin",
-		"UseBlockMixin"
+		"SignEditScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

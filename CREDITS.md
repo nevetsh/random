@@ -1,14 +1,15 @@
 # Credits
 
 MeowMod itself is MIT licensed (see the `license` field in `src/main/resources/fabric.mod.json`).
-Three modules are ports of other people's work and stay under the licence that work came with, so the
+Two modules are ports of other people's work and stay under the licence that work came with, so the
 notices belong here.
 
 ## OdinClient — BSD 3-Clause
 
 `Auto Click` ([AutoClick.kt](src/main/kotlin/com/meow/mod/features/AutoClick.kt)),
-`Auto Harp` ([AutoHarp.kt](src/main/kotlin/com/meow/mod/features/AutoHarp.kt)) and
-`Auto Experiments` ([AutoExperiments.kt](src/main/kotlin/com/meow/mod/features/AutoExperiments.kt))
+`Auto Harp` ([AutoHarp.kt](src/main/kotlin/com/meow/mod/features/AutoHarp.kt)),
+`Auto Experiments` ([AutoExperiments.kt](src/main/kotlin/com/meow/mod/features/AutoExperiments.kt)) and
+`Trigger Bot` ([TriggerBot.kt](src/main/kotlin/com/meow/mod/features/TriggerBot.kt))
 are ports of modules from [skies-starred/OdinClient](https://github.com/skies-starred/OdinClient),
 rewritten in Kotlin against the menus this mod reads. Their notice, as required:
 
@@ -42,15 +43,3 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
-
-## V5 — GNU GPL-3.0
-
-`No Interact` ([NoInteract.kt](src/main/kotlin/com/meow/mod/features/NoInteract.kt)) re-implements
-the "Cancel Interact" module from [V5-Client/V5](https://github.com/V5-Client/V5), which is licensed
-GPL-3.0. The rules were written out again in Kotlin rather than copied, but the behaviour is theirs,
-and the reference is pinned here:
-
-<https://github.com/V5-Client/V5/blob/55ae528a57c1bc06bb1f3ff6c474ed830990e7e9/modules/other/CancelInteract.js>
-
-That module is GPL-3.0, so that one file is not covered by this project's MIT licence: treat
-`NoInteract.kt` as GPL-3.0 if you reuse it.
