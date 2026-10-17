@@ -12,7 +12,8 @@
 		"ReforgeOverlayMixin",
 		"SignEditScreenMixin",
 		"UseBlockMixin",
-		"ActionBarMixin"
+		"ActionBarMixin",
+		"AttackMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

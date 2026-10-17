@@ -1,5 +1,6 @@
 package com.meow.mod.features
 
+import com.meow.mod.api.ClickLock
 import com.meow.mod.api.PlayerUtils
 import com.meow.mod.api.cpsDelay
 import com.meow.mod.api.humanDelay
@@ -35,14 +36,14 @@ object Combat : Feature(
 	heading = "Combat",
 	privateSwitch = true
 ) {
-	// Off / Hold / Always is the module's own control, listed instead of the plain on/off switch.
-	// Always clicks whatever is looked at, Hold only while the attack key is held, Off is off.
-	// Driving the real switch keeps the keybind and the enable/disable wiring working unchanged.
+	// Off / Always is the module's own control, listed instead of the plain on/off switch.
+	// Always clicks whatever is looked at, Off is off. Driving the real switch keeps the keybind
+	// and the enable/disable wiring working unchanged.
 	private val settingMode = addChoice(
 		"mode",
 		MODE_ALWAYS,
-		listOf(MODE_OFF, MODE_HOLD, MODE_ALWAYS),
-		"Click automatically, or while holding.", "Mode",
+		listOf(MODE_OFF, MODE_ALWAYS),
+		"Click whatever you look at.", "Mode",
 		heading = "Combat"
 	)
 	private val settingCps = addSlider(
@@ -64,10 +65,6 @@ object Combat : Feature(
 	@Volatile
 	private var enabled = false
 
-	// Whether the attack key has to be held for the trigger to run (the Hold option).
-	@Volatile
-	private var holdMode = false
-
 	private var initialized = false
 
 	// When the next click may happen, and the entity the last one was aimed at: a target that
@@ -81,7 +78,6 @@ object Combat : Feature(
 	}
 
 	private fun onModeChanged(value: String) {
-		holdMode = value == MODE_HOLD
 		configSwitch.set(value != MODE_OFF)
 	}
 
@@ -100,11 +96,6 @@ object Combat : Feature(
 		val player = mc.player ?: return
 		if (player.isUsingItem) return
 		if (mc.gameMode?.isDestroying == true) return
-		// Hold: nothing happens unless the player is holding the attack key down.
-		if (holdMode && !mc.options.keyAttack.isDown) {
-			target = null
-			return
-		}
 
 		val entity = findTarget(mc, player)
 		if (entity == null) {
@@ -178,15 +169,23 @@ object Combat : Feature(
 		return listed.any { it.profile.id == entity.uuid }
 	}
 
+	// The player's own left click is shut off the whole time the module is on: the only attacks
+	// that go out are the module's own. It opens again on Off.
+	private fun updateClickLock() {
+		ClickLock.setBlocked(enabled)
+	}
+
 	override fun onEnable() {
 		enabled = true
 		nextClick = 0L
 		target = null
+		updateClickLock()
 	}
 
 	override fun onDisable() {
 		enabled = false
 		target = null
+		updateClickLock()
 	}
 
 	// How far off the crosshair an entity may sit and still be picked up, in blocks.
@@ -194,6 +193,5 @@ object Combat : Feature(
 
 	// The dropdown's options, kept as constants so the comparisons are the values themselves.
 	private const val MODE_OFF = "Off"
-	private const val MODE_HOLD = "Hold"
 	private const val MODE_ALWAYS = "Always"
 }
