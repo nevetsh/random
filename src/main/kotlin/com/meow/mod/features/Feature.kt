@@ -12,12 +12,16 @@ abstract class Feature(
 	val subcategory: String = Config.GENERAL,
 	displayName: String,
 	enabledByDefault: Boolean = false,
-	heading: String? = null
+	heading: String? = null,
+	// A module that turns itself on and off with a dropdown does not list the plain switch on
+	// its page: the dropdown is the control. The switch still exists - it is what the keybind
+	// and the enable/disable wiring use - it is just not drawn (see ConfigScreen).
+	privateSwitch: Boolean = false
 ) {
 	val configSwitch: ConfigData.FeatureSwitch =
-		ConfigData.FeatureSwitch(configName, displayName, description, enabledByDefault).also {
+		ConfigData.FeatureSwitch(configName, displayName, description, enabledByDefault, subcategory).also {
 			Config.register(it)
-			Config.registerIn(subcategory, it, heading)
+			if (!privateSwitch) Config.registerIn(subcategory, it, heading)
 			Config.features.add(it)
 		}
 
@@ -53,6 +57,21 @@ abstract class Feature(
 		step: Double = 10.0
 	): ConfigData.Slider =
 		ConfigData.Slider("${this.configName}\$$configName", initial, min, max, displayName, description, configSwitch, step).also {
+			Config.register(it)
+			Config.registerIn(listedIn(subcategory), it, heading)
+			configSwitch.subconfigs.add(it)
+		}
+
+	fun addChoice(
+		configName: String,
+		initial: String,
+		options: List<String>,
+		description: String = "",
+		displayName: String,
+		subcategory: String? = null,
+		heading: String? = null
+	): ConfigData.Choice =
+		ConfigData.Choice("${this.configName}\$$configName", initial, options, displayName, description, configSwitch).also {
 			Config.register(it)
 			Config.registerIn(listedIn(subcategory), it, heading)
 			configSwitch.subconfigs.add(it)

@@ -7,6 +7,7 @@ import com.meow.mod.api.ItemUtils
 import com.meow.mod.api.humanDelay
 import com.meow.mod.events.MeowEvents
 import com.meow.mod.skyblock.DungeonUtils
+import com.meow.mod.skyblock.Sidebar
 import com.meow.mod.ui.KeybindsScreen
 import com.meow.mod.ui.ModuleKeysScreen
 import com.mojang.blaze3d.platform.InputConstants
@@ -284,10 +285,35 @@ object AutoFragrun : Feature(
 
 		if (giantSeen && miniSeen && !giantAlive && !miniAlive) {
 			triggered = true
+			// A frag run is a solo run. If anyone else is in the instance this is someone's
+			// party, and requeuing would drag them all into another dungeon they did not ask
+			// for, so the room is left alone.
+			if (!isSolo(mc)) {
+				LOGGER.info(
+					"[MeowMod] Auto Fragrun: blood room done but a party is here ({}), not requeuing",
+					Sidebar.lines().joinToString(" | ")
+				)
+				return
+			}
 			pendingTrigger = true
 			LOGGER.info("[MeowMod] Auto Fragrun: giant + miniboss killed, requeuing")
 		}
 	}
+
+	// A frag run is solo. Hypixel lists its player-model mobs in the tab list, so the tab list
+	// cannot tell a party from the mobs - they are all "listed". The sidebar can: it reads
+	// "Solo" when there is no party. If the sidebar cannot be read at all we fall back to the
+	// tab list, keeping only names that could be a real account (the mobs use spaces/symbols).
+	private fun isSolo(mc: Minecraft): Boolean {
+		val lines = Sidebar.lines()
+		if (lines.any { it.equals("Solo", ignoreCase = true) }) return true
+		if (lines.isNotEmpty()) return false
+		val self = mc.player?.uuid ?: return true
+		val listed = mc.player?.connection?.getListedOnlinePlayers() ?: return true
+		return listed.none { it.profile.id != self && REAL_USERNAME.matches(it.profile.name) }
+	}
+
+	private val REAL_USERNAME = Regex("^[A-Za-z0-9_]{3,16}$")
 
 	private fun resetAutoF7() {
 		triggered = false

@@ -1,6 +1,7 @@
 package com.meow.mod.mixin;
 
 import com.meow.mod.features.CustomName;
+import com.meow.mod.features.HideServerId;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
@@ -18,7 +19,7 @@ public class FontMixin {
 		argsOnly = true
 	)
 	private String meowmod$prepareString(String text) {
-		return CustomName.INSTANCE.replaceStringIfNeeded(text);
+		return HideServerId.INSTANCE.replaceStringIfNeeded(CustomName.INSTANCE.replaceStringIfNeeded(text));
 	}
 
 	@ModifyVariable(
@@ -27,7 +28,7 @@ public class FontMixin {
 		argsOnly = true
 	)
 	private FormattedCharSequence meowmod$prepareSequence(FormattedCharSequence text) {
-		return CustomName.INSTANCE.replaceSequenceIfNeeded(text);
+		return HideServerId.INSTANCE.replaceSequenceIfNeeded(CustomName.INSTANCE.replaceSequenceIfNeeded(text));
 	}
 
 	@ModifyVariable(
@@ -36,7 +37,7 @@ public class FontMixin {
 		argsOnly = true
 	)
 	private String meowmod$widthString(String text) {
-		return CustomName.INSTANCE.replaceStringIfNeeded(text);
+		return HideServerId.INSTANCE.replaceStringIfNeeded(CustomName.INSTANCE.replaceStringIfNeeded(text));
 	}
 
 	@ModifyVariable(
@@ -47,7 +48,11 @@ public class FontMixin {
 	private FormattedText meowmod$widthFormattedText(FormattedText text) {
 		if (text instanceof Component component) {
 			Component replaced = CustomName.INSTANCE.replaceComponentIfNeeded(component);
-			if (replaced != null) return replaced;
+			if (replaced != null) text = replaced;
+		}
+		if (text instanceof Component component) {
+			Component stripped = HideServerId.INSTANCE.replaceComponentIfNeeded(component);
+			if (stripped != null) return stripped;
 		}
 		return text;
 	}
@@ -58,6 +63,6 @@ public class FontMixin {
 		argsOnly = true
 	)
 	private FormattedCharSequence meowmod$widthSequence(FormattedCharSequence text) {
-		return CustomName.INSTANCE.replaceSequenceIfNeeded(text);
+		return HideServerId.INSTANCE.replaceSequenceIfNeeded(CustomName.INSTANCE.replaceSequenceIfNeeded(text));
 	}
 }

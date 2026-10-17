@@ -73,7 +73,8 @@ object CustomName : Feature(
 	}
 
 	@JvmStatic
-	fun replaceComponentIfNeeded(component: Component): Component? {
+	fun replaceComponentIfNeeded(component: Component?): Component? {
+		if (component == null) return null
 		val regex = displayPattern() ?: return null
 		if (!regex.containsMatchIn(component.string)) return null
 		return transform(component, regex, customName())
@@ -104,6 +105,16 @@ object CustomName : Feature(
 	@JvmStatic
 	fun replaceSequenceIfNeeded(text: FormattedCharSequence): FormattedCharSequence {
 		val regex = displayPattern() ?: return text
+		// A cheap first pass: this runs for every text sequence drawn, and almost none of them
+		// mention the name, so the line is flattened once into a single builder and dropped
+		// when it holds no match. The styled rebuild below only runs for the few that do, which
+		// keeps the per-frame allocation - and the GC pauses it caused - off the render path.
+		val full = StringBuilder()
+		text.accept { _, _, cp ->
+			full.appendCodePoint(cp)
+			true
+		}
+		if (!regex.containsMatchIn(full)) return text
 		val replacement = customName()
 
 		val styles = ArrayList<Style>()
@@ -124,7 +135,6 @@ object CustomName : Feature(
 			styles.add(curStyle ?: Style.EMPTY)
 			texts.add(cur.toString())
 		}
-		if (texts.none { regex.containsMatchIn(it) }) return text
 
 		val root = Component.empty()
 		for (i in texts.indices) {

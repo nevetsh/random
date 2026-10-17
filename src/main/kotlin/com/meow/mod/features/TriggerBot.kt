@@ -18,29 +18,35 @@ import net.minecraft.world.phys.HitResult
 object TriggerBot : Feature(
 	"triggerBot",
 	"Trigger bots for crystals and secrets.",
-	subcategory = "Trigger Bot",
+	subcategory = "Auto Click",
 	displayName = "Trigger Bot",
-	enabledByDefault = true
+	enabledByDefault = true,
+	heading = "Trigger Bot"
 ) {
 	private val crystal = addSwitch(
 		"crystal", false,
-		"Takes and places crystals.", "Crystal"
+		"Takes and places crystals.", "Crystal",
+		heading = "Trigger Bot"
 	)
 	private val take = addSwitch(
 		"take", true,
-		"Takes crystals.", "Take"
+		"Takes crystals.", "Take",
+		heading = "Trigger Bot"
 	)
 	private val place = addSwitch(
 		"place", true,
-		"Places crystals.", "Place"
+		"Places crystals.", "Place",
+		heading = "Trigger Bot"
 	)
 	private val secret = addSwitch(
 		"secret", true,
-		"Clicks secrets.", "Secret"
+		"Clicks secrets.", "Secret",
+		heading = "Trigger Bot"
 	)
 	private val delay = addSlider(
 		"delay", 200.0, 0.0, 1000.0,
-		"Delay between secret clicks.", "Delay"
+		"Delay between secret clicks.", "Delay",
+		heading = "Trigger Bot"
 	)
 
 	// Cooldown between crystal clicks, before its human wobble.

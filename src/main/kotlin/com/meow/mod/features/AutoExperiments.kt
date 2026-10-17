@@ -45,7 +45,7 @@ object AutoExperiments : Feature(
 		"verifyClicks",
 		false,
 		"Wait for the game to answer each click.",
-		"Wait For Click To Land"
+		"UI-Based Clicks"
 	)
 
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
@@ -53,7 +53,11 @@ object AutoExperiments : Feature(
 	private var handler: ExperimentHandler? = null
 	private var lastClick: Long = 0
 
-	// Used by the "Wait For Click To Land" option: the menu each click was made in, so the next
+	// Whether the claim head of the results menu is still to be clicked: one head per menu,
+	// so a menu that stays open after claiming is not clicked again every tick.
+	private var claimArmed = true
+
+	// Used by the "UI-Based Clicks" option: the menu each click was made in, so the next
 	// click can wait for that menu to change - and in these experiments that change is the game
 	// saying it took the click. No retry is asked of it: sending the same block twice could be
 	// read as a wrong answer, so a click is never repeated here.
@@ -81,10 +85,21 @@ object AutoExperiments : Feature(
 		val screen = minecraft.gui.screen() as? AbstractContainerScreen<*>
 		if (screen == null) {
 			handler = null
+			claimArmed = true
 			return
 		}
 
 		val title = screen.title.string
+
+		// The results menu, whichever of the two experiments it came from: both hand their
+		// rewards through a player head to claim, so the head is clicked and the run is
+		// over. Nothing beyond the head being a head is read.
+		if (title.contains(EXPERIMENT_OVER, ignoreCase = true)) {
+			claimRewards(screen)
+			return
+		}
+		claimArmed = true
+
 		var current = handler
 		if (current == null) {
 			current = when {
@@ -162,6 +177,27 @@ object AutoExperiments : Feature(
 		clickWait.reset()
 		stallWarned = false
 	}
+
+	// The claim head of the results menu: a player head in the menu's own slots, clicked
+	// once for this menu and then left alone - claiming closes it, and a menu that stays
+	// open must not be clicked again.
+	private fun claimRewards(screen: AbstractContainerScreen<*>) {
+		handler = null
+		if (!claimArmed) return
+		val now = System.currentTimeMillis()
+		if (now - lastClick < nextDelay) return
+		val slots = screen.menu.slots
+		val own = (slots.size - PLAYER_SLOTS).coerceAtLeast(0)
+		val head = (0 until own).firstOrNull { slots[it].item.item == Items.PLAYER_HEAD } ?: return
+		ScreenUtils.click(head)
+		LOGGER.info("[MeowMod] AutoExperiments: claiming the rewards at slot {}", head)
+		claimArmed = false
+		lastClick = now
+		nextDelay = nextWait()
+	}
+
+	private const val EXPERIMENT_OVER = "Experiment Over"
+	private const val PLAYER_SLOTS = 36
 
 	private abstract class ExperimentHandler {
 		protected var clicks = 0

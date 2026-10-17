@@ -71,6 +71,12 @@ object Config {
 		result
 	}
 
+	// The module that owns a page, whatever its switch is listed on: a module whose on/off
+	// control is a dropdown hides the plain switch but is still the page's module, so the
+	// keybind button has something to bind.
+	fun featureFor(subcategory: String): ConfigData.FeatureSwitch? =
+		features.firstOrNull { it.subcategory == subcategory }
+
 	fun load() {
 		val f = file
 		if (Files.exists(f)) {
@@ -93,6 +99,7 @@ object Config {
 			ConfigType.SWITCH -> (data as ConfigData<Boolean>).set(element.asBoolean)
 			ConfigType.SLIDER -> (data as ConfigData<Double>).set(element.asDouble)
 			ConfigType.TEXT -> (data as ConfigData<String>).set(element.asString)
+			ConfigType.CHOICE -> (data as ConfigData<String>).set(element.asString)
 			// Neither of these holds a value the player sets.
 			ConfigType.BUTTON, ConfigType.SECTION -> {}
 		}

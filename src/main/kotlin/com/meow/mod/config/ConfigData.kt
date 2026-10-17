@@ -43,9 +43,18 @@ open class ConfigData<T> @JvmOverloads constructor(
 		configName: String,
 		displayName: String,
 		description: String = "",
-		initial: Boolean = false
+		initial: Boolean = false,
+		// The page this module belongs to. A module whose on/off switch is not listed on its own
+		// page (it exposes a dropdown instead) is still found by it, so the page keeps its
+		// keybind button.
+		val subcategory: String = ""
 	) : ConfigData<Boolean>(configName, ConfigType.SWITCH, initial, displayName, description) {
 		val subconfigs = mutableListOf<ConfigData<*>>()
+
+		// For a module whose on/off control is a dropdown rather than the plain switch: that
+		// control has to stay listed even while the module is off, or it could never be turned
+		// back on. Everything else the module owns is hidden while it is off (see ConfigScreen).
+		var control: ConfigData<*>? = null
 
 		// The key that switches this module on and off from in-game, saved with the rest of the
 		// settings under the module's own name. It is deliberately not listed in any config
@@ -84,6 +93,17 @@ open class ConfigData<T> @JvmOverloads constructor(
 		val maxLength: Int = 96,
 		val secret: Boolean = false
 	) : ConfigData<String>(configName, ConfigType.TEXT, initial, displayName, description, parent)
+
+	// One of a fixed set of strings, chosen from a dropdown rather than typed. The stored value
+	// is the option's own text, so a setting renames itself by renaming the option.
+	class Choice(
+		configName: String,
+		initial: String,
+		val options: List<String>,
+		displayName: String,
+		description: String = "",
+		parent: FeatureSwitch? = null
+	) : ConfigData<String>(configName, ConfigType.CHOICE, initial, displayName, description, parent)
 
 	// A heading inside a subcategory, so a long page like General can be split into named
 	// groups. It holds no value: it is only ever drawn (see Config.configsFor).

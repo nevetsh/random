@@ -74,8 +74,8 @@ import org.slf4j.LoggerFactory
 object AutoBz : Feature(
 	"autoBz",
 	"Re-places the order cancelled with CTRL.",
-	subcategory = "Auto BZ",
-	displayName = "Auto BZ",
+	subcategory = "Auto Bazaar",
+	displayName = "Auto Bazaar",
 	enabledByDefault = true
 ) {
 	private val autoRestore = addSwitch(
@@ -116,19 +116,6 @@ object AutoBz : Feature(
 		"Minimum gap between clicks.",
 		"Step Delay (ms)"
 	)
-	private val priceOptionBuy = addText(
-		"priceOptionBuy",
-		"Top Order +0.1",
-		"Price button for buy orders.",
-		"Buy Price Option"
-	)
-	private val priceOptionSell = addText(
-		"priceOptionSell",
-		"Best Offer -0.1",
-		"Price button for sell offers.",
-		"Sell Price Option"
-	)
-
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 
 	// An order as it appears in the Bazaar: which side it is on, the product name, how
@@ -253,10 +240,14 @@ object AutoBz : Feature(
 	// screen's "Price per unit: 501.8 coins".
 	private val OPTION_UNIT_PRICE = Regex("Unit price:\\s*([\\d,.]+)\\s*coins", RegexOption.IGNORE_CASE)
 
-	// Hypixel names the same 0.1-step option differently on each side of the market, so
-	// when the configured name is not in the menu at all these are tried in order.
-	private val BUY_PRICE_FALLBACKS = listOf("Top Order +0.1", "Best Offer +0.1")
-	private val SELL_PRICE_FALLBACKS = listOf("Best Offer -0.1", "Top Order -0.1")
+	// The price buttons both sides use: buy orders undercut with "Top Order +0.1", sell
+	// offers overcut with "Best Offer -0.1". Hypixel names the same 0.1-step option
+	// differently on the other side of the market, so those are tried in order when the
+	// preferred one is not in the menu at all.
+	private val BUY_PRICE_OPTION = "Top Order +0.1"
+	private val SELL_PRICE_OPTION = "Best Offer -0.1"
+	private val BUY_PRICE_FALLBACKS = listOf(BUY_PRICE_OPTION, "Best Offer +0.1")
+	private val SELL_PRICE_FALLBACKS = listOf(SELL_PRICE_OPTION, "Top Order -0.1")
 	private val TOTAL_PRICE = Regex("Total:?\\s*([\\d,.]+)\\s*coins", RegexOption.IGNORE_CASE)
 
 	// The coins a cancelled buy order hands back: "13,306 coins".
@@ -1152,7 +1143,7 @@ object AutoBz : Feature(
 	private fun submitName(order: Order) = if (isBuy(order)) BUY_SUBMIT else SELL_SUBMIT
 
 	private fun priceOption(order: Order) =
-		if (isBuy(order)) priceOptionBuy.get().trim() else priceOptionSell.get().trim()
+		if (isBuy(order)) BUY_PRICE_OPTION else SELL_PRICE_OPTION
 
 	// The option the player configured, then the name Hypixel gives the same 0.1-step
 	// option on this side of the market when the configured one is not in the menu.

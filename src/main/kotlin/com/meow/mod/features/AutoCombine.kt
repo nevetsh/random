@@ -36,6 +36,12 @@ object AutoCombine : Feature(
 		"Only click the anvil.",
 		"Force Click Only"
 	)
+	private val SETTING_UI_CLICKS = addSwitch(
+		"uiClicks",
+		true,
+		"Only click again after the menu changes.",
+		"UI-Based Clicks"
+	)
 	private val books = mapOf(
 		"ultimate_bank" to 5,
 		"ultimate_bobbin_time" to 5,
@@ -85,6 +91,11 @@ object AutoCombine : Feature(
 	private var currentEnchant: String? = null
 	private var lastClick = -1L
 
+	// The menu's fingerprint when the last click went out. With UI-Based Clicks on the module
+	// waits for that fingerprint to change before it acts again, so it moves on the moment the
+	// menu answers instead of counting out the whole delay (which stays as the upper bound).
+	private var lastActSig: String? = null
+
 	// How long to wait after a click before the next one, rolled once per click.
 	private var nextDelay = 0L
 	private var lastProgress = System.currentTimeMillis()
@@ -111,7 +122,7 @@ object AutoCombine : Feature(
 				blocked.clear()
 				return@register
 			}
-			if (container.title.string != "Anvil" || !invLoaded(container) || !canClick()) return@register
+			if (container.title.string != "Anvil" || !invLoaded(container) || !ready()) return@register
 			onContainerTick(container)
 			onEnchantTick(container)
 		}
@@ -140,7 +151,7 @@ object AutoCombine : Feature(
 			recover(container)
 			return
 		}
-		if (!canClick()) return
+		if (!ready()) return
 		val items = container.menu.items
 
 		val midItem = items.getOrNull(22) ?: return
@@ -172,7 +183,7 @@ object AutoCombine : Feature(
 			return
 		}
 		if (SETTING_FORCE_ONLY.get()) {
-			if (!canClick()) return
+			if (!ready()) return
 			if (isEnchanted == true || isSign) {
 				markClick()
 				ScreenUtils.click(22, false)
@@ -223,7 +234,7 @@ object AutoCombine : Feature(
 				val enchantName = it.enchantName
 				val level = it.level
 				if (currentEnchant != "$enchantName:$level") return@forEach
-				if (!canClick() || stash.size == 2) return@forEach
+				if (!ready() || stash.size == 2) return@forEach
 
 				markClick()
 				ScreenUtils.click(it.slot, true)
@@ -272,16 +283,25 @@ object AutoCombine : Feature(
 		sortedData.entries.forEach { (k, v) ->
 			if (v.distinctBy { it.uuid }.size < 2 && k != inFlight) sortedData.remove(k)
 		}
-		markClick()
 	}
 
-	private fun canClick(): Boolean =
-		lastClick == -1L || System.currentTimeMillis() - lastClick > nextDelay
+	// Whether it is time to click again. The delay is always the least time between clicks;
+	// beyond that, with UI-Based Clicks on, the module waits for the menu to answer the last
+	// click, and only gives up on an answer after ACT_TIMEOUT so a refused click cannot stall it.
+	private fun ready(): Boolean {
+		val now = System.currentTimeMillis()
+		if (lastClick == -1L) return true
+		if (now - lastClick <= nextDelay) return false
+		if (!SETTING_UI_CLICKS.get()) return true
+		if (ScreenUtils.signature() != lastActSig) return true
+		return now - lastClick > maxOf(nextDelay, ACT_TIMEOUT)
+	}
 
 	// Every click rolls the wait until the next one, so the pacing varies the way a hand
 	// rather than a metronome would.
 	private fun markClick() {
 		lastClick = System.currentTimeMillis()
+		lastActSig = ScreenUtils.signature()
 		nextDelay = humanDelay(SETTING_DELAY.get().toLong())
 	}
 
@@ -289,6 +309,10 @@ object AutoCombine : Feature(
 	// extra wait a refused click adds before the next one.
 	private const val REFUSAL_GRACE = 4000L
 	private const val REFUSAL_PAUSE = 1200L
+
+	// How long to wait for the menu to answer a click before moving on anyway, so a click the
+	// server ignored cannot stall the loop.
+	private const val ACT_TIMEOUT = 1000L
 
 	private fun reset(full: Boolean = true) {
 		data.clear()

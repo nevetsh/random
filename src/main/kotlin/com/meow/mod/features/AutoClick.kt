@@ -3,13 +3,13 @@ package com.meow.mod.features
 import com.meow.mod.api.ChatUtils
 import com.meow.mod.api.ItemUtils
 import com.meow.mod.api.PlayerUtils
+import com.meow.mod.api.cpsDelay
 import com.meow.mod.api.noControlCodes
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.phys.BlockHitResult
 import kotlin.jvm.optionals.getOrNull
-import kotlin.random.Random
 
 // Ported from OdinClient (skies-starred/OdinClient, BSD-3-Clause)
 //
@@ -21,53 +21,65 @@ object AutoClick : Feature(
 	"autoClick",
 	"Clicks at your chosen rate while held.",
 	subcategory = "Auto Click",
-	displayName = "Auto Click"
+	displayName = "Auto Click",
+	heading = "Auto Click"
 ) {
 	private val settingWhiteListOnly = addSwitch(
 		"whiteListOnly", false,
-		"Only clicks a whitelisted item.", "Whitelist Only"
+		"Only clicks a whitelisted item.", "Whitelist Only",
+		heading = "Auto Click"
 	)
 	private val settingAllowBreaking = addSwitch(
 		"allowBreaking", false,
-		"Keeps breaking blocks while clicking.", "Allow Breaking"
+		"Keeps breaking blocks while clicking.", "Allow Breaking",
+		heading = "Auto Click"
 	)
 	private val settingBlockBreaker = addSwitch(
 		"blockBreaker", true,
-		"Never clicks with a Dungeon Breaker.", "Block Dungeon Breaker"
+		"Never clicks with a Dungeon Breaker.", "Block Dungeon Breaker",
+		heading = "Auto Click"
 	)
 	private val settingTerminatorOnly = addSwitch(
-		"terminatorOnly", true,
-		"Terminator and right click only.", "Terminator Only"
+		"terminatorOnly", false,
+		"Terminator and right click only.", "Terminator Only",
+		heading = "Auto Click"
 	)
 	private val settingCps = addSlider(
 		"cps", 5.0, 3.0, 15.0,
-		"Terminator clicks per second.", "Clicks Per Second", step = 0.5
+		"Terminator clicks per second.", "Clicks Per Second",
+		heading = "Auto Click", step = 0.5
 	)
 	private val settingEnableLeftClick = addSwitch(
 		"enableLeftClick", true,
-		"Clicks with the left button.", "Enable Left Click"
+		"Clicks with the left button.", "Enable Left Click",
+		heading = "Auto Click"
 	)
 	private val settingEnableRightClick = addSwitch(
 		"enableRightClick", true,
-		"Clicks with the right button.", "Enable Right Click"
+		"Clicks with the right button.", "Enable Right Click",
+		heading = "Auto Click"
 	)
 	private val settingLeftCps = addSlider(
 		"leftCps", 5.0, 3.0, 15.0,
-		"Left clicks per second.", "Left Clicks Per Second", step = 0.5
+		"Left clicks per second.", "Left Clicks Per Second",
+		heading = "Auto Click", step = 0.5
 	)
 	private val settingRightCps = addSlider(
 		"rightCps", 5.0, 3.0, 15.0,
-		"Right clicks per second.", "Right Clicks Per Second", step = 0.5
+		"Right clicks per second.", "Right Clicks Per Second",
+		heading = "Auto Click", step = 0.5
 	)
 	// The whitelists are edited by the commands below and stored here as comma separated item
 	// ids, so they are saved with the rest of the settings (see Config).
 	private val settingLeftWhitelist = addText(
 		"leftWhitelist", "",
-		"Left whitelist, edited by /mm ac.", "Left Whitelist", maxLength = 512
+		"Left whitelist, edited by /mm ac.", "Left Whitelist",
+		maxLength = 512, heading = "Auto Click"
 	)
 	private val settingRightWhitelist = addText(
 		"rightWhitelist", "",
-		"Right whitelist, edited by /mm ac.", "Right Whitelist", maxLength = 512
+		"Right whitelist, edited by /mm ac.", "Right Whitelist",
+		maxLength = 512, heading = "Auto Click"
 	)
 
 	@Volatile
@@ -103,7 +115,7 @@ object AutoClick : Feature(
 			if (itemId(player.mainHandItem) != "TERMINATOR") return
 			if (!mc.options.keyUse.isDown) return
 			if (now < nextRight) return
-			nextRight = now + clickDelay(settingCps.get())
+			nextRight = now + cpsDelay(settingCps.get())
 			PlayerUtils.leftClick()
 			return
 		}
@@ -125,18 +137,14 @@ object AutoClick : Feature(
 		if (hit != null && !level.getBlockState(hit.blockPos).isAir && left && settingAllowBreaking.get()) return
 
 		if (left && now >= nextLeft) {
-			nextLeft = now + clickDelay(settingLeftCps.get())
+			nextLeft = now + cpsDelay(settingLeftCps.get())
 			PlayerUtils.leftClick()
 		}
 		if (right && now >= nextRight) {
-			nextRight = now + clickDelay(settingRightCps.get())
+			nextRight = now + cpsDelay(settingRightCps.get())
 			PlayerUtils.rightClick()
 		}
 	}
-
-	// The same wobble Odin uses: the click rate in milliseconds, give or take 60.
-	private fun clickDelay(cps: Double): Long =
-		(1000.0 / cps + (Random.nextDouble() - 0.5) * 60.0).toLong()
 
 	// The SkyBlock id of an item ("TERMINATOR"), from the same place Odin reads it.
 	private fun itemId(stack: ItemStack): String? =

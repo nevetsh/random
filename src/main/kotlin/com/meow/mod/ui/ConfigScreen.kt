@@ -1,8 +1,11 @@
 package com.meow.mod.ui
 
 import com.meow.mod.MeowMod
+import com.meow.mod.api.ChatUtils
 import com.meow.mod.config.Config
 import com.meow.mod.config.ConfigData
+import com.meow.mod.features.AutoFragrun
+import com.meow.mod.features.ModuleKeys
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -21,7 +24,10 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 
 	private data class Control(val data: ConfigData<*>, val track: Rect, val valueRect: Rect? = null)
 
-	private var selected: String = Config.subcategories.firstOrNull() ?: Config.CATEGORY_NAME
+	// The page the screen opens on: the one that was open when it was last closed, or
+	// General the first time. Remembered here rather than in the config, so it lasts for
+	// the session and nothing about it is written to disk.
+	private var selected: String = lastPage ?: (Config.subcategories.firstOrNull() ?: Config.CATEGORY_NAME)
 	private var scroll = 0.0
 	private var maxScroll = 0.0
 	private var dragging: ConfigData.Slider? = null
@@ -29,6 +35,10 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	private var editBuffer: String = ""
 	private var editingText: ConfigData.Text? = null
 	private var textBuffer: String = ""
+
+	// The dropdown that is open, if any. The list is drawn over everything else, and its rows
+	// are worked out from the open control's own box when a click arrives.
+	private var expandedChoice: ConfigData.Choice? = null
 
 	private var rows = listOf<Control>()
 	private var closeRect: Rect? = null
@@ -39,6 +49,12 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	private var search = ""
 	private var searching = false
 	private var searchRect: Rect? = null
+
+	// The keybind button in a module page's header, and whether it is waiting for the key that
+	// module should answer to (see ModuleKeys).
+	private var keybindRect: Rect? = null
+	private var keybindFor: ConfigData.FeatureSwitch? = null
+	private var listeningKeybind = false
 
 	private val leftX get() = pctX(17.5)
 	private val mainY get() = pctY(17.5)
@@ -59,6 +75,7 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		if (Config.subcategories.isNotEmpty() && selected !in Config.subcategories) {
 			selected = Config.subcategories.first()
 		}
+		lastPage = selected
 	}
 
 	override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {}
@@ -80,6 +97,7 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		drawSearch(graphics)
 		drawClose(graphics)
 		drawContent(graphics, mouseX, mouseY)
+		drawChoiceOverlay(graphics)
 	}
 
 	private data class Entry(val name: String, val rect: Rect)
@@ -148,12 +166,31 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 			graphics, selected, rightX + 6, rightY + 4,
 			ColorPalette.argb(ColorPalette.TEXT), false, 1.2f
 		)
+
+		// A module's page carries its keybind beside the title: General belongs to no module
+		// and so has nothing to bind - its switches are settings of their own pages. The
+		// button names the key it is set to, or asks for one. The module is looked up by page
+		// rather than from the rows, so a page whose on/off switch is a dropdown still has one.
+		val data = Config.configsFor(selected).filter { visibleOnPage(it) }
+		val module = if (selected == Config.GENERAL) null else Config.featureFor(selected)
+		keybindFor = module
+		keybindRect = null
+		if (module != null) {
+			val label = when {
+				listeningKeybind -> "Press a key..."
+				module.toggleKey > 0 -> "Key: ${ModuleKeys.keyName(module.toggleKey)}"
+				else -> "Keybind"
+			}
+			val btnW = (Render2D.width(label) + 10f).roundToInt().coerceAtLeast(44)
+			val btn = Rect(rightX + rightW - btnW - 4, rightY + 2, btnW, 12)
+			drawButton(graphics, btn, label)
+			keybindRect = btn
+		}
 		Render2D.argb(graphics, rightX + 1, rightY + headerH - 1, rightW - 2, 1, ColorPalette.argb(ColorPalette.OUTLINE))
 
 		val contentTop = rightY + headerH
 		val contentH = rightY + rightH - contentTop
 		val rowH = 20
-		val data = Config.configsFor(selected)
 		val total = data.size * rowH
 		maxScroll = (total - contentH).coerceAtLeast(0).toDouble()
 		if (scroll > maxScroll) scroll = maxScroll
@@ -167,7 +204,7 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 
 			// A heading, centred across the page, splitting it into named groups.
 			if (configData is ConfigData.Section) {
-				val label = "=== ${configData.title} ==="
+				val label = configData.title
 				val labelW = (Render2D.width(label) * HEADING_SCALE).roundToInt()
 				Render2D.text(
 					graphics, label, rightX + (rightW - labelW) / 2, rowY + 5,
@@ -184,6 +221,7 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 				is ConfigData.Slider -> 104
 				is ConfigData.Text -> minOf(160, rowW / 2) + 6
 				is ConfigData.Button -> 66
+				is ConfigData.Choice -> minOf(150, rowW / 2) + 6
 				else -> 0
 			}
 			val textW = (rowW - controlW - 9).coerceAtLeast(0)
@@ -237,11 +275,30 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 					newRows.add(Control(configData, btn))
 				}
 
+				is ConfigData.Choice -> {
+					val fieldW = minOf(150, rowW / 2)
+					val box = Rect(rowX + rowW - fieldW - 2, rowY + 4, fieldW, 12)
+					drawChoiceBox(graphics, box, configData)
+					newRows.add(Control(configData, box))
+				}
+
 				else -> {}
 			}
 		}
 		graphics.scissorStack.pop()
 		rows = newRows
+	}
+
+	// A module's own settings are only listed while it is on: with the switch off there is
+	// nothing to set, so the page reads as just the modules it offers. The switch itself is
+	// never gated - it is what turns the module back on - and neither is a module's dropdown
+	// control (see ConfigData.FeatureSwitch.control). A setting a module lists on another page
+	// (its command keys live in General) belongs to that page and is left alone, since it works
+	// whatever the module is set to.
+	private fun visibleOnPage(item: ConfigData<*>): Boolean {
+		val owner = item.parent ?: return true
+		if (owner.subcategory != selected) return true
+		return owner.get() || item === owner.control
 	}
 
 	private fun truncate(text: String, maxPx: Int, scale: Float): String {
@@ -310,10 +367,58 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		Render2D.text(graphics, label, tx, rect.y + 2, ColorPalette.argb(ColorPalette.TEXT), false, 1f)
 	}
 
+	// A dropdown's closed face: the chosen option and a caret. The open list is drawn by
+	// drawChoiceOverlay, over the rest of the page.
+	private fun drawChoiceBox(graphics: GuiGraphicsExtractor, rect: Rect, choice: ConfigData.Choice) {
+		val hover = rect.contains(mouseX, mouseY)
+		Render2D.rect(graphics, rect.x, rect.y, rect.w, rect.h, if (hover) ColorPalette.OUTLINE2 else ColorPalette.TERTIARY)
+		Render2D.outline(graphics, rect.x, rect.y, rect.w, rect.h, ColorPalette.argb(ColorPalette.OUTLINE))
+		Render2D.text(graphics, truncate(choice.get(), rect.w - 12, 0.85f), rect.x + 3, rect.y + 2, ColorPalette.argb(ColorPalette.TEXT), false, 0.85f)
+		Render2D.text(graphics, "v", rect.x + rect.w - 8, rect.y + 2, ColorPalette.argb(ColorPalette.LIGHT_TEXT), false, 0.85f)
+	}
+
+	private fun choiceMenu(anchor: Rect, choice: ConfigData.Choice): Rect =
+		Rect(anchor.x, anchor.y + anchor.h + 1, anchor.w, choice.options.size * CHOICE_ITEM_H)
+
+	private fun choiceItem(menu: Rect, index: Int): Rect =
+		Rect(menu.x, menu.y + index * CHOICE_ITEM_H, menu.w, CHOICE_ITEM_H)
+
+	private fun drawChoiceOverlay(graphics: GuiGraphicsExtractor) {
+		val choice = expandedChoice ?: return
+		val control = rows.firstOrNull { it.data === choice } ?: return
+		val menu = choiceMenu(control.track, choice)
+		Render2D.rect(graphics, menu.x, menu.y, menu.w, menu.h, ColorPalette.PRIMARY)
+		Render2D.outline(graphics, menu.x, menu.y, menu.w, menu.h, ColorPalette.argb(ColorPalette.ACCENT))
+		choice.options.forEachIndexed { index, option ->
+			val item = choiceItem(menu, index)
+			if (option == choice.get()) Render2D.rect(graphics, item.x, item.y, item.w, item.h, ColorPalette.TERTIARY)
+			val color = if (item.contains(mouseX, mouseY)) ColorPalette.argb(ColorPalette.ACCENT) else ColorPalette.argb(ColorPalette.TEXT)
+			Render2D.text(graphics, truncate(option, item.w - 6, 0.85f), item.x + 3, item.y + 2, color, false, 0.85f)
+		}
+	}
+
 	override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, bl: Boolean): Boolean {
 		val mx = mouseButtonEvent.x.toInt()
 		val my = mouseButtonEvent.y.toInt()
 		if (mouseButtonEvent.button() != 0) return super.mouseClicked(mouseButtonEvent, bl)
+
+		// An open dropdown owns the next click: it either picks an option or is dismissed, and
+		// nothing underneath it is touched either way.
+		expandedChoice?.let { choice ->
+			val control = rows.firstOrNull { it.data === choice }
+			if (control != null) {
+				val menu = choiceMenu(control.track, choice)
+				choice.options.forEachIndexed { index, option ->
+					if (choiceItem(menu, index).contains(mx, my)) {
+						choice.set(option)
+						expandedChoice = null
+						return true
+					}
+				}
+			}
+			expandedChoice = null
+			return true
+		}
 
 		if (editing != null) {
 			val editingControl = rows.firstOrNull { it.data === editing }
@@ -333,10 +438,22 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		// Any other click puts the search box away, so the next key press is the game's.
 		searching = false
 
+		keybindRect?.let { rect ->
+			if (rect.contains(mx, my)) {
+				listeningKeybind = !listeningKeybind
+				return true
+			}
+		}
+		// Clicking anywhere else stops the button listening, for the same reason.
+		listeningKeybind = false
+
 		for (entry in sidebarEntries()) {
 			if (entry.rect.contains(mx, my)) {
 				selected = entry.name
+				lastPage = entry.name
 				scroll = 0.0
+				listeningKeybind = false
+				expandedChoice = null
 				return true
 			}
 		}
@@ -382,6 +499,11 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 
 				is ConfigData.Button -> {
 					data.action()
+					return true
+				}
+
+				is ConfigData.Choice -> {
+					expandedChoice = data
 					return true
 				}
 
@@ -461,6 +583,34 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	}
 
 	override fun keyPressed(keyEvent: KeyEvent): Boolean {
+		// The keybind button takes every key while it listens: it is the one control that
+		// means nothing without the key it is waiting for.
+		if (listeningKeybind) {
+			val feature = keybindFor
+			listeningKeybind = false
+			if (feature == null) return true
+			when (keyEvent.key()) {
+				InputConstants.KEY_ESCAPE -> return true
+
+				InputConstants.KEY_BACKSPACE, InputConstants.KEY_DELETE -> {
+					ModuleKeys.bind(feature, 0)
+					ChatUtils.sendMessage("&f${feature.displayName}&7: keybind cleared.", true)
+					return true
+				}
+
+				else -> {
+					val taken = ModuleKeys.bind(feature, keyEvent.key())
+					val note = StringBuilder()
+					if (taken != null) note.append(" ${taken.displayName} gave up that key.")
+					if (AutoFragrun.commandForKey(keyEvent.key()) != null) note.append(" A command binding runs it, so that wins.")
+					ChatUtils.sendMessage(
+						"&f${feature.displayName}&7 bound to &f${ModuleKeys.keyName(keyEvent.key())}&7.$note",
+						true
+					)
+					return true
+				}
+			}
+		}
 		if (searching) {
 			when (keyEvent.key()) {
 				InputConstants.KEY_ESCAPE, InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
@@ -546,7 +696,14 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		const val ENTRY_H = 14
 		const val SEARCH_MAX = 24
 
+		// The page the last opened screen was showing, so /mm can reopen on it. General
+		// the first time, when nothing has been remembered yet.
+		private var lastPage: String? = null
+
 		// Headings are drawn a touch smaller than the settings under them.
 		const val HEADING_SCALE = 0.95f
+
+		// The height of one row in an open dropdown.
+		const val CHOICE_ITEM_H = 12
 	}
 }

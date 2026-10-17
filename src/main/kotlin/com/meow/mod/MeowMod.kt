@@ -11,11 +11,17 @@ import com.meow.mod.features.AutoCombine
 import com.meow.mod.features.AutoExperiments
 import com.meow.mod.features.AutoFragrun
 import com.meow.mod.features.AutoHarp
+import com.meow.mod.features.AutoHeal
+import com.meow.mod.features.AutoReforge
+import com.meow.mod.features.AutoSalvage
 import com.meow.mod.features.AutoSlayer
+import com.meow.mod.features.Combat
 import com.meow.mod.features.CustomName
 import com.meow.mod.features.DiscordChat
+import com.meow.mod.features.FastPets
 import com.meow.mod.features.Feature
 import com.meow.mod.features.HideFromServers
+import com.meow.mod.features.HideServerId
 import com.meow.mod.features.ModUpdater
 import com.meow.mod.features.ModuleKeys
 import com.meow.mod.features.NoInteract
@@ -47,14 +53,18 @@ object MeowMod : ClientModInitializer {
 	private val allFeatures: List<Feature> = listOf(
 		AutoFragrun, HideFromServers, AutoCombine, ModUpdater,
 		AutoHarp, AutoExperiments, TriggerBot, AutoClick, WorldScanner,
-		CustomName, DiscordChat, NoInteract, SkipCommandConfirm,
-		AutoAuction, AutoBz, AutoSlayer
+		CustomName, DiscordChat, NoInteract, SkipCommandConfirm, HideServerId,
+		AutoAuction, AutoBz, AutoSlayer, AutoSalvage, AutoReforge, AutoHeal, Combat
 	)
 
 	override fun onInitializeClient() {
 		// The General page is split into named groups, listed in this order however the modules
 		// happen to register their settings.
 		Config.declareHeadings(Config.GENERAL, "Mod Information", "Keybinds", "Cosmetics", "Misc")
+
+		// The Auto Click page holds three modules - the held-button clicker, the trigger bot
+		// and the combat clicker - split into a group each.
+		Config.declareHeadings("Auto Click", "Auto Click", "Trigger Bot", "Combat")
 
 		Access.check(Minecraft.getInstance().user.profileId)
 
@@ -79,6 +89,11 @@ object MeowMod : ClientModInitializer {
 		AutoAuction.initialize()
 		AutoBz.initialize()
 		AutoSlayer.initialize()
+		AutoSalvage.initialize()
+		AutoReforge.initialize()
+		AutoHeal.initialize()
+		Combat.initialize()
+		FastPets.initialize()
 
 		Config.load()
 

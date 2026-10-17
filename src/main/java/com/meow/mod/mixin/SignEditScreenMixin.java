@@ -1,5 +1,6 @@
 package com.meow.mod.mixin;
 
+import com.meow.mod.features.AutoAuction;
 import com.meow.mod.features.AutoBz;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,6 +24,7 @@ public class SignEditScreenMixin {
 	@Inject(method = "removed", at = @At("HEAD"))
 	private void meowmod$fillPendingSignText(CallbackInfo ci) {
 		String text = AutoBz.INSTANCE.getPendingSignText();
+		if (text == null) text = AutoAuction.INSTANCE.getPendingSignText();
 		if (text == null) return;
 
 		Arrays.fill(this.messages, "");

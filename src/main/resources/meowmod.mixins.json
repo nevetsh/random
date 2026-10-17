@@ -8,8 +8,11 @@
 		"FontMixin",
 		"CommandConfirmMixin",
 		"ContainerClickMixin",
+		"PlayerTabOverlayMixin",
+		"ReforgeOverlayMixin",
 		"SignEditScreenMixin",
-		"UseBlockMixin"
+		"UseBlockMixin",
+		"ActionBarMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
