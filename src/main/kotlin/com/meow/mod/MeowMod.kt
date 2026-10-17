@@ -24,6 +24,7 @@ import com.meow.mod.features.ModUpdater
 import com.meow.mod.features.ModuleKeys
 import com.meow.mod.features.NoInteract
 import com.meow.mod.features.SkipCommandConfirm
+import com.meow.mod.features.TriggerBot
 import com.meow.mod.features.WorldScanner
 import com.meow.mod.skyblock.LocationUtils
 import net.fabricmc.api.ClientModInitializer
@@ -49,7 +50,7 @@ object MeowMod : ClientModInitializer {
 	// module can add one to General from anywhere.
 	private val allFeatures: List<Feature> = listOf(
 		AutoFragrun, HideFromServers, AutoCombine, ModUpdater,
-		AutoHarp, AutoExperiments, AutoClick, WorldScanner,
+		AutoHarp, AutoExperiments, TriggerBot, AutoClick, WorldScanner,
 		CustomName, DiscordChat, NoInteract, SkipCommandConfirm, HideServerId,
 		AutoAuction, AutoBz, AutoSlayer, AutoSalvage, AutoReforge
 	)
@@ -58,6 +59,10 @@ object MeowMod : ClientModInitializer {
 		// The General page is split into named groups, listed in this order however the modules
 		// happen to register their settings.
 		Config.declareHeadings(Config.GENERAL, "Mod Information", "Keybinds", "Cosmetics", "Misc")
+
+		// The Auto Click page holds the held-button clicker and the crystal/secret trigger bot,
+		// split into a group each.
+		Config.declareHeadings("Auto Click", "Auto Click", "Trigger Bot")
 
 		Access.check(Minecraft.getInstance().user.profileId)
 
@@ -73,6 +78,7 @@ object MeowMod : ClientModInitializer {
 		AutoCombine.initialize()
 		AutoHarp.initialize()
 		AutoExperiments.initialize()
+		TriggerBot.initialize()
 		AutoClick.initialize()
 		WorldScanner.initialize()
 		AutoFragrun.initialize()
