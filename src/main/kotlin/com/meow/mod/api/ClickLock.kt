@@ -14,7 +14,8 @@ object ClickLock {
 
 	fun setBlocked(value: Boolean) {
 		blocked = value
-		// A button already held when the gate shuts would otherwise keep its run of attacks.
-		if (value) Minecraft.getInstance().options.keyAttack.setDown(false)
+		// A button already held when the gate shuts would otherwise keep its run of attacks. The
+		// options are not built yet when this runs during startup, hence the safe call.
+		if (value) Minecraft.getInstance().options?.keyAttack?.setDown(false)
 	}
 }
