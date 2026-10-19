@@ -74,7 +74,8 @@ import org.slf4j.LoggerFactory
 object AutoBz : Feature(
 	"autoBz",
 	"Re-places the order cancelled with CTRL.",
-	subcategory = "Auto Bazaar",
+	subcategory = "Automation",
+	heading = "Auto Bazaar",
 	displayName = "Auto Bazaar",
 	enabledByDefault = true
 ) {

@@ -73,9 +73,10 @@ object Config {
 
 	// The module that owns a page, whatever its switch is listed on: a module whose on/off
 	// control is a dropdown hides the plain switch but is still the page's module, so the
-	// keybind button has something to bind.
+	// keybind button has something to bind. A page shared by several modules has no single
+	// owner, and reports none.
 	fun featureFor(subcategory: String): ConfigData.FeatureSwitch? =
-		features.firstOrNull { it.subcategory == subcategory }
+		features.filter { it.subcategory == subcategory }.singleOrNull()
 
 	fun load() {
 		val f = file

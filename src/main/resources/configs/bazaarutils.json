@@ -1,0 +1,217 @@
+{
+	"MOD_VERSION": "0.6.2",
+	"firstLoad": false,
+	"resourcesSha": "28b578d3b77ef829b202b557a56cc57b7700dd23",
+	"flipHelper": {
+		"enabled": true,
+		"bidding_type": "COMPETITIVE",
+		"order": null,
+		"slot_number": 17
+	},
+	"userOrders": [
+		{
+			"fill_status": "SET",
+			"amount_claimed": 0,
+			"amount_filled": -1,
+			"name": "Thorn Shard",
+			"volume": 32,
+			"product_i_d": "SHARD_THORN",
+			"outbid_status": "COMPETITIVE",
+			"tolerance": 0.0,
+			"item_info": {
+				"slot_index": 19,
+				"item_stack": null
+			},
+			"price_per_item": 201007.4,
+			"price_type": "INSTASELL",
+			"insta_sell_price": 201006.8,
+			"insta_buy_price": 289192.4
+		},
+		{
+			"fill_status": "SET",
+			"amount_claimed": 0,
+			"amount_filled": -1,
+			"name": "Special Zealot Shard",
+			"volume": 4,
+			"product_i_d": "SHARD_SPECIAL_ZEALOT",
+			"outbid_status": "OUTBID",
+			"tolerance": 0.0,
+			"item_info": {
+				"slot_index": 10,
+				"item_stack": null
+			},
+			"price_per_item": 14186.1,
+			"price_type": "INSTABUY",
+			"insta_sell_price": 9509.7,
+			"insta_buy_price": 14184.8
+		}
+	],
+	"bzTax": 0.0125,
+	"customOrders": [
+		{
+			"type": "MaxBuyOrder",
+			"buy_sign_clicked": false,
+			"enabled": true,
+			"order_amount": 372,
+			"item": "minecraft:purple_stained_glass_pane",
+			"slot_number": 17
+		}
+	],
+	"developerMode": false,
+	"outbidOrderHandler": {
+		"auto_open_enabled": false,
+		"notify_outbid": true,
+		"notification_sound": true
+	},
+	"restrictSell": {
+		"enabled": true,
+		"safety_clicks_required": 3,
+		"controls": [
+			{
+				"enabled": true,
+				"rule": "PRICE",
+				"amount": 1000000.0,
+				"name": null
+			}
+		],
+		"locked": false,
+		"safety_clicks": 0
+	},
+	"developer": {
+		"all_messages": false,
+		"error_messages": false,
+		"gui_messages": false,
+		"feature_messages": false,
+		"bazaar_data_messages": false,
+		"command_messages": false,
+		"item_data_messages": false
+	},
+	"stashMessages": {
+		"remove_messages": true,
+		"stash_previously_claimed": true
+	},
+	"bookmarks": [
+		{
+			"name": "Rejuvenate I",
+			"bookmarked_item_stack": null,
+			"order_info": {
+				"name": "Rejuvenate I",
+				"volume": null,
+				"product_i_d": "ENCHANTMENT_REJUVENATE_1",
+				"outbid_status": null,
+				"tolerance": 0.9,
+				"item_info": null,
+				"price_per_item": null,
+				"price_type": "INSTABUY",
+				"insta_sell_price": 2944.0,
+				"insta_buy_price": 10387.9
+			},
+			"slot_number": 0
+		}
+	],
+	"priceCharts": {
+		"show_outside_bazaar": false
+	},
+	"orderStatusHighlight": {
+		"enabled": true
+	},
+	"disableErrorNotifications": true,
+	"orderFilledSound": true,
+	"orderLimit": {
+		"enabled": true,
+		"coin_limit": 1.5E10,
+		"order_limit_entries": [
+			{
+				"price": 4014.6000000000004,
+				"time": "2026-10-18T15:31:29.4872686-04:00[America/New_York]"
+			},
+			{
+				"price": 52393.200000000004,
+				"time": "2026-10-18T15:31:29.4892783-04:00[America/New_York]"
+			},
+			{
+				"price": 34134.0,
+				"time": "2026-10-18T15:31:29.4933309-04:00[America/New_York]"
+			},
+			{
+				"price": 115913.0,
+				"time": "2026-10-18T15:31:29.5018394-04:00[America/New_York]"
+			},
+			{
+				"price": 58176.4,
+				"time": "2026-10-18T15:34:55.4530712-04:00[America/New_York]"
+			},
+			{
+				"price": 4864940.8,
+				"time": "2026-10-18T15:37:44.0056527-04:00[America/New_York]"
+			},
+			{
+				"price": 6432211.2,
+				"time": "2026-10-18T15:37:58.8953228-04:00[America/New_York]"
+			},
+			{
+				"price": 58174.4,
+				"time": "2026-10-18T15:38:04.8324406-04:00[America/New_York]"
+			},
+			{
+				"price": 317440.0,
+				"time": "2026-10-18T15:38:18.9038772-04:00[America/New_York]"
+			},
+			{
+				"price": 69.0,
+				"time": "2026-10-18T15:41:01.8796635-04:00[America/New_York]"
+			},
+			{
+				"price": 2.3,
+				"time": "2026-10-18T15:41:10.6501159-04:00[America/New_York]"
+			},
+			{
+				"price": 1582170.8,
+				"time": "2026-10-18T15:47:37.9011327-04:00[America/New_York]"
+			},
+			{
+				"price": 6432236.8,
+				"time": "2026-10-18T15:47:49.6468495-04:00[America/New_York]"
+			},
+			{
+				"price": 56113.2,
+				"time": "2026-10-18T15:49:40.1204189-04:00[America/New_York]"
+			},
+			{
+				"price": 1582170.8,
+				"time": "2026-10-18T15:49:43.7138947-04:00[America/New_York]"
+			},
+			{
+				"price": 919775.7000000001,
+				"time": "2026-10-18T15:52:51.3398902-04:00[America/New_York]"
+			},
+			{
+				"price": 51201.899999999994,
+				"time": "2026-10-18T15:56:45.1937128-04:00[America/New_York]"
+			},
+			{
+				"price": 5359.2,
+				"time": "2026-10-18T15:56:45.195224-04:00[America/New_York]"
+			},
+			{
+				"price": 0.8,
+				"time": "2026-10-18T15:56:45.1972238-04:00[America/New_York]"
+			},
+			{
+				"price": 7.5,
+				"time": "2026-10-18T15:56:45.1992336-04:00[America/New_York]"
+			},
+			{
+				"price": 173868.90000000002,
+				"time": "2026-10-18T15:56:45.2012397-04:00[America/New_York]"
+			},
+			{
+				"price": 93.0,
+				"time": "2026-10-18T15:56:45.2242512-04:00[America/New_York]"
+			}
+		]
+	},
+	"bazaarOpenOrdersButton": {
+		"enabled": true
+	}
+}

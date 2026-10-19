@@ -3,7 +3,9 @@ package com.meow.mod.features
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import com.meow.mod.Access
+import com.meow.mod.api.ClickWait
 import com.meow.mod.api.ItemUtils
+import com.meow.mod.api.ScreenUtils
 import com.meow.mod.api.humanDelay
 import com.meow.mod.events.MeowEvents
 import com.meow.mod.skyblock.DungeonUtils
@@ -27,7 +29,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 object AutoFragrun : Feature(
 	"keyCommand",
 	"Requeues F7 after the Blood room.",
-	subcategory = "Auto Fragrun",
+	subcategory = "Automation",
+	heading = "Auto Fragrun",
 	displayName = "Auto Fragrun",
 	enabledByDefault = true
 ) {
@@ -80,18 +83,20 @@ object AutoFragrun : Feature(
 		}
 	)
 
-	private val settingAutoF7 = addSwitch(
-		"autoF7",
-		true,
-		"Requeue after the Blood room.",
-		"Auto F7"
-	)
-
 	private val settingF7Command = addText(
 		"f7Command",
 		"joindungeon catacombs 7",
 		"Command run after the Blood room.",
 		"Auto F7 Command"
+	)
+
+	private val settingDelay = addSlider(
+		"delay",
+		300.0,
+		50.0,
+		1000.0,
+		"Delay before the join click, +10-20%.",
+		"Confirm Click Delay (ms)"
 	)
 
 	val bindings = CopyOnWriteArrayList<Binding>()
@@ -105,6 +110,8 @@ object AutoFragrun : Feature(
 	// times the requeue may be retried before we give up.
 	private const val ENTER_TIMEOUT = 5000L
 	private const val MAX_REQUEUE_ATTEMPTS = 5
+	private const val CLICK_RETRY_MS = 1200L
+	private const val CLICK_RETRIES = 2
 
 	// A party that is queued sits on Hypixel's "Creating instance..." map (the screen advertises
 	// something like 14 seconds) and the entry message only arrives once that is done, so the
@@ -149,6 +156,10 @@ object AutoFragrun : Feature(
 	private var enterDeadline = 0L
 	private var escapePresses = 0
 	private var escapeDown = false
+
+	private val clickWait = ClickWait(CLICK_RETRY_MS, CLICK_RETRIES)
+	private var lastClick = 0L
+	private var nextDelay = 0L
 
 	init {
 		bindsData.onChange { parse(it) }
@@ -202,7 +213,8 @@ object AutoFragrun : Feature(
 
 		if (!enabled) return
 
-		if (settingAutoF7.get() && !triggered) scanBloodMobs(mc)
+		// The module switch is the requeue switch: there is no second one on the page.
+		if (!triggered) scanBloodMobs(mc)
 
 		if (requeueing) trackPlayerEscape(mc)
 
@@ -368,11 +380,13 @@ object AutoFragrun : Feature(
 	}
 
 	// Sends the requeue command and waits for the join menu to appear. The delay scales
-	// with ping (300-500ms) so the menu has time to render before we look for the icon.
+	// with ping so the menu has time to render before we look for the icon.
 	private fun sendRequeueCommand(mc: Minecraft) {
 		runCommand(settingF7Command.get())
 		awaitingConfirm = true
-		confirmCooldown = System.currentTimeMillis() + humanDelay(300L + pingMillis(mc))
+		lastClick = 0L
+		nextDelay = humanDelay((settingDelay.get() + pingMillis(mc)).toLong())
+		confirmCooldown = System.currentTimeMillis() + nextDelay
 	}
 
 	private fun stopRequeue() {
@@ -409,27 +423,53 @@ object AutoFragrun : Feature(
 	}
 
 	private fun confirmMenu(mc: Minecraft) {
-		if (System.currentTimeMillis() > confirmCooldown + 6000L) {
+		val screen = mc.gui.screen() ?: return
+
+		val now = System.currentTimeMillis()
+		if (now > confirmCooldown + 6000L) {
 			LOGGER.info("[MeowMod] Auto Fragrun: timed out waiting for join menu")
 			awaitingConfirm = false
 			retryRequeue(mc, "join menu never appeared")
 			return
 		}
-		val screen = mc.gui.screen() ?: return
-		if (screen !== loggedScreen) {
-			loggedScreen = screen
-			val container = screen as? AbstractContainerScreen<*>
-			if (container == null) {
-				LOGGER.info("[MeowMod] Auto Fragrun: screen ${screen.javaClass.simpleName} (not a container)")
-			} else {
-				LOGGER.info("[MeowMod] Auto Fragrun: menu \"${container.title.string}\" slots=${container.menu.slots.size}")
-				for (i in container.menu.slots.indices) {
-					val stack = container.menu.slots[i].item
-					if (stack.isEmpty) continue
-					LOGGER.info("[MeowMod] Auto Fragrun:   slot $i = ${stack.item} \"${stack.hoverName.string}\"")
-				}
-			}
+
+		val signature = ScreenUtils.signature(screen)
+
+		// The join button was already clicked; wait for the menu to change (server answered)
+		// before moving on to wait for the dungeon entry message.
+		if (lastClick > 0L && !clickWait.unanswered(signature)) {
+			confirmSent()
+			return
 		}
+
+		// While the menu is still the one we clicked in, the click hasn't been answered:
+		// press the join button again, bounded by retries.
+		if (clickWait.unanswered(signature)) {
+			if (clickWait.retryDue(signature) && now - lastClick >= nextDelay) {
+				val container = screen as? AbstractContainerScreen<*> ?: return
+				val player = mc.player ?: return
+				val menu = container.menu
+				val target = menu.slots.indices.firstOrNull { i ->
+					val stack = menu.slots[i].item
+					if (stack.isEmpty) return@firstOrNull false
+					val name = stack.hoverName.string.lowercase()
+					name.contains("undersized") || name.contains("play anyway")
+				} ?: menu.slots.indices.firstOrNull { i ->
+					val stack = menu.slots[i].item
+					!stack.isEmpty && stack.item == Items.PLAYER_HEAD
+				}
+				if (target != null) {
+					LOGGER.info("[MeowMod] Auto Fragrun: join menu did not change, clicking the join button again (slot $target)")
+					ScreenUtils.click(target, false)
+				}
+				lastClick = now
+				nextDelay = humanDelay((settingDelay.get() + pingMillis(mc)).toLong())
+			}
+			return
+		}
+
+		// First click: wait for the delay, then click the join button.
+		if (now - lastClick < nextDelay) return
 
 		val container = screen as? AbstractContainerScreen<*> ?: return
 		val player = mc.player ?: return
@@ -446,14 +486,20 @@ object AutoFragrun : Feature(
 			!stack.isEmpty && stack.item == Items.PLAYER_HEAD
 		} ?: return
 
-		mc.gameMode?.handleContainerInput(menu.containerId, target, 0, ContainerInput.PICKUP, player)
-		LOGGER.info("[MeowMod] Auto Fragrun: clicked join button at slot $target")
+		LOGGER.info("[MeowMod] Auto Fragrun: clicking join button at slot $target")
+		ScreenUtils.click(target, false)
+		lastClick = now
+		nextDelay = humanDelay((settingDelay.get() + pingMillis(mc)).toLong())
+		clickWait.clicked(ScreenUtils.signature())
+	}
+
+	// The join button has been clicked and the menu has changed - the requeue is in flight.
+	// Wait for Hypixel's "entered The Catacombs" message; if it never comes the requeue is
+	// retried (see tick()).
+	private fun confirmSent() {
 		awaitingConfirm = false
-		// Wait for Hypixel's "entered The Catacombs" message; if it never comes the
-		// requeue is retried (see tick()).
 		enterDeadline = System.currentTimeMillis() + ENTER_TIMEOUT
-		// Press ESC shortly after so we don't stay stuck in the menu if it didn't close itself.
-		escapeScreen = container
+		escapeScreen = Minecraft.getInstance().gui.screen()
 		escapeArmed = true
 		escapeAttempts = 0
 		escapeUntil = System.currentTimeMillis() + QUEUE_GRACE

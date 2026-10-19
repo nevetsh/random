@@ -1,0 +1,49 @@
+{
+    // The version of the config file. Do not change this unless you know what you are doing.
+    "rconfig:version": 2,
+    "enabled": true,
+    "onlyInSkyblock": true,
+    "hideVanillaTooltipData": true,
+    // Valid Values: NORMAL, NO_ICON, NOTHING
+    "nonSkyBlockItemMode": "NO_ICON",
+    "visuals": {
+        "spinny": false,
+        "vanillaBackground": true,
+        "forceDefaultVanillaBackground": false,
+        "skyBlockColor": true,
+        "shinyHolographic": true,
+        "alignedStats": true,
+        // Valid Values: NORMAL, HIDE, SIDE, SIDE_SHIFT
+        "extraStatsDisplay": "NORMAL"
+    },
+    "tags": {
+        "rarity": true,
+        "category": true,
+        "stars": true,
+        "breakingPower": true,
+        "furniture": true,
+        "shardId": true,
+        "dungeonized": false,
+        "pet": true,
+        "petCandy": true
+    },
+    "pets": {
+        "petAbilities": true,
+        "petHeldItem": true,
+        "petLevel": true,
+        "petFavourite": true
+    },
+    "mining": {
+        "drillFuel": true,
+        "drillComponents": true,
+        "gemstoneSlots": true
+    },
+    "fishing": {
+        "rodParts": true
+    },
+    "misc": {
+        "itemAbility": true,
+        "enchantedBookNames": true,
+        "skillLevelBar": true
+    }
+}

@@ -12,7 +12,8 @@ import net.minecraft.world.item.Items
 object AutoHarp : Feature(
 	"autoHarp",
 	"Plays the Harp for you.",
-	subcategory = "Auto Harp",
+	subcategory = "Automation",
+	heading = "Auto Harp",
 	displayName = "Auto Harp",
 	enabledByDefault = true
 ) {

@@ -19,7 +19,8 @@ import kotlin.jvm.optionals.getOrNull
 object AutoCombine : Feature(
 	"autoCombine",
 	"Combines enchanted books to max level.",
-	subcategory = "Auto Combine",
+	subcategory = "Automation",
+	heading = "Auto Combine",
 	displayName = "Auto Combine",
 	enabledByDefault = true
 ) {
@@ -33,7 +34,7 @@ object AutoCombine : Feature(
 	private val SETTING_FORCE_ONLY = addSwitch(
 		"forceAcceptOnly",
 		false,
-		"Only click the anvil.",
+		"Skips book checks, clicks the result.",
 		"Force Click Only"
 	)
 	private val SETTING_UI_CLICKS = addSwitch(

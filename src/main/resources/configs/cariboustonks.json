@@ -1,0 +1,422 @@
+{
+  "version": 1,
+  "general": {
+    "firstTimeWithTheMod": false,
+    "keyShortcutCooldown": 500,
+    "stonks": {
+      "bazaarTooltipPrice": true,
+      "bazaarTooltipMoreData": true,
+      "bazaarTooltipPriceType": "NORMAL",
+      "bazaarTooltipPriceDisplayType": "SHORT",
+      "auctionTooltipPrice": true,
+      "auctionTooltipPriceType": "LOWEST_BIN",
+      "auctionTooltipPriceDisplayType": "SHORT",
+      "npcTooltipPrice": true,
+      "showTotalTooltipPriceInsteadShift": false,
+      "itemValueTooltip": true,
+      "useNetworthItemValue": true,
+      "autoCopyLowestBinPrice": true,
+      "itemValueViewer": {
+        "enabled": false,
+        "scale": 1.0
+      },
+      "bazaarOrderTracker": false,
+      "bazaarSignEditEnterValidation": false,
+      "showGradientInGraphScreen": false,
+      "showAllDataInInfoScreen": true
+    },
+    "reminders": {
+      "playSound": true,
+      "boosterCookie": false,
+      "ubikCube": true,
+      "enchantedCloak": true,
+      "stonksAuction": true,
+      "forge": true
+    },
+    "internal": {
+      "checkForUpdates": true,
+      "fetchBazaarData": true,
+      "fetchAuctionData": true
+    }
+  },
+  "uiAndVisuals": {
+    "shadowTextHud": true,
+    "beaconBeamWithNoDepthTest": true,
+    "highlightSelectedPet": false,
+    "abiphoneFavoriteContacts": true,
+    "rareDropVisualEffect": true,
+    "deployables": {
+      "enabled": false,
+      "detectPowerOrbs": true,
+      "detectFlares": false,
+      "detectPersonals": false,
+      "hud": {
+        "showHud": true,
+        "x": 150,
+        "y": 15,
+        "scale": 1.0,
+        "anchor": "TOP_LEFT"
+      }
+    },
+    "mobTracking": {
+      "tracking": true,
+      "showInBossBar": true,
+      "enableSlayer": true,
+      "spawnMessage": "§bNearby!",
+      "playSoundWhenSpawn": true,
+      "highlightColor": -1,
+      "hud": {
+        "showInHud": false,
+        "x": 125,
+        "y": 25,
+        "scale": 1.0,
+        "anchor": "TOP_LEFT"
+      }
+    },
+    "tabListWidget": {
+      "hud": {
+        "enabled": false,
+        "x": 10,
+        "y": 50,
+        "scale": 1.0,
+        "anchor": "TOP_LEFT"
+      },
+      "customWidgets": "",
+      "pickaxeAbility": true,
+      "bestiary": false,
+      "slayer": false,
+      "pet": false,
+      "pity": false,
+      "commissions": false
+    },
+    "sacksOverlay": {
+      "enabled": false,
+      "listSize": 15,
+      "priceType": "BUY",
+      "scale": 1.0
+    },
+    "favoriteAbiphoneContacts": [],
+    "coloredEnchantment": {
+      "showMaxEnchants": false,
+      "maxEnchantsRainbow": false,
+      "maxEnchantsColor": -65536,
+      "showGoodEnchants": false,
+      "goodEnchantsColor": -14336
+    },
+    "sharedPositionWaypoint": {
+      "enabled": true,
+      "showTime": 15,
+      "type": "WAYPOINT",
+      "rainbow": false,
+      "color": -65536,
+      "shareWithArea": false
+    },
+    "overlay": {
+      "gyrokineticWand": false,
+      "etherWarp": false,
+      "etherWarpZoom": false,
+      "etherWarpSubtitle": false
+    },
+    "pingHud": {
+      "enabled": false,
+      "x": 58,
+      "y": 8,
+      "scale": 1.0,
+      "anchor": "TOP_LEFT"
+    },
+    "fpsHud": {
+      "enabled": false,
+      "x": 6,
+      "y": 64,
+      "scale": 1.0,
+      "anchor": "TOP_LEFT"
+    },
+    "tpsHud": {
+      "enabled": false,
+      "x": 6,
+      "y": 8,
+      "scale": 1.0,
+      "anchor": "TOP_LEFT"
+    },
+    "dayHud": {
+      "enabled": false,
+      "x": 20,
+      "y": 64,
+      "scale": 1.0,
+      "anchor": "TOP_LEFT"
+    }
+  },
+  "chat": {
+    "copyChat": false,
+    "chatHistoryLength": 555,
+    "chatParty": {
+      "chatPartyColored": false,
+      "chatPartyColor": -11184641
+    },
+    "chatGuild": {
+      "chatGuildColored": false,
+      "chatGuildColor": -16733696
+    }
+  },
+  "combat": {
+    "cocoonedMob": {
+      "warning": true,
+      "message": "§c§lCocooned!",
+      "cocoonedWarningTitle": true,
+      "cocoonedWarningSound": false,
+      "cocoonedWarningTime": true,
+      "cocoonedWarningBeam": false
+    },
+    "lowHealthWarning": {
+      "lowHealthWarningEnabled": false,
+      "lowHealthWarningThreshold": 15,
+      "lowHealthWarningIntensity": 0.69
+    },
+    "ragAxe": {
+      "enabled": false,
+      "message": "§cCasted!",
+      "hud": {
+        "enabled": false,
+        "x": 200,
+        "y": 10,
+        "scale": 1.0,
+        "anchor": "TOP_LEFT"
+      }
+    },
+    "secondLife": {
+      "cooldownHud": {
+        "enabled": false,
+        "x": 150,
+        "y": 50,
+        "scale": 1.0,
+        "anchor": "TOP_LEFT"
+      },
+      "used": true,
+      "backMessage": false,
+      "backTitle": true,
+      "backSound": true,
+      "sendPartyInfo": false
+    },
+    "witherShield": {
+      "onlyShowTimer": false,
+      "readyMessage": "§aREADY",
+      "timerColor": -171,
+      "hud": {
+        "enabled": false,
+        "x": 50,
+        "y": 100,
+        "scale": 1.0,
+        "anchor": "TOP_LEFT"
+      }
+    }
+  },
+  "instance": {
+    "croesus": {
+      "mainMenuOpenedChest": false,
+      "mainMenuOpenedChestColor": 1068149418,
+      "mainMenuKismetAvailable": false,
+      "mainMenuKismetAvailableColor": 1062557183,
+      "mainMenuNoMoreChest": false,
+      "mainMenuNoMoreChestColor": 1073698133
+    },
+    "theCatacombs": {
+      "bossThornSpiritBearTimers": false,
+      "bossSadanTerracottaTimers": false,
+      "witherKing": {
+        "dragPrio": false,
+        "dragPrioMessage": true,
+        "dragPrioTitle": true,
+        "showSpawnTime": false,
+        "showDragBoundingBox": false,
+        "showDragTargetLine": false,
+        "showLastBreathTarget": false
+      }
+    }
+  },
+  "slayer": {
+    "statsHud": {
+      "enabled": false,
+      "x": 250,
+      "y": 50,
+      "scale": 1.0,
+      "anchor": "TOP_LEFT"
+    },
+    "slayerBossCocoonedWarning": false,
+    "bossSpawnAlert": false,
+    "minibossSpawnAlert": false,
+    "highlightBoss": false,
+    "highlightBossColor": -43691,
+    "highlightMiniboss": false,
+    "highlightMinibossColor": -43691,
+    "showStatsBreakdown": false,
+    "showStatsInChat": false,
+    "tarantulaBoss": {
+      "highlightBossEggs": true,
+      "highlightBossEggsColor": -5635926,
+      "showCursorLineToBossEggs": false
+    }
+  },
+  "foraging": {
+    "showTreeOverlayInfo": false,
+    "hideTreeBreakAnimation": false,
+    "safari": {
+      "floorDrops": true
+    }
+  },
+  "hunting": {
+    "attributeInfos": false,
+    "trackingShards": {
+      "minPreWarmCatch": 6,
+      "inactivityResetMs": 120000,
+      "includeLootShare": true,
+      "priceType": "BUY",
+      "hud": {
+        "enabled": true,
+        "x": 100,
+        "y": 50,
+        "scale": 1.0,
+        "anchor": "TOP_LEFT"
+      }
+    },
+    "huntingBoxOverlay": {
+      "enabled": false,
+      "listSize": 15,
+      "priceType": "BUY",
+      "scale": 1.0
+    }
+  },
+  "farming": {
+    "garden": {
+      "pestsLocator": false,
+      "highlightInfestedPlots": false,
+      "greenhouseGrowthStageReminder": true
+    }
+  },
+  "fishing": {
+    "bobberTimerDisplay": false,
+    "fishCaughtWarning": false,
+    "hotspotRadarGuess": false,
+    "hotspotHighlight": false,
+    "hotspotHighlightFoundAnnouncer": false,
+    "hotspotHighlightGoneAnnouncer": false,
+    "rareSeaCreatureWarning": false,
+    "rareSeaCreatureSound": false,
+    "rareSeaCreaturePartyAnnouncer": false,
+    "lotusAtoll": {
+      "wormholeFinder": false,
+      "lilyPadHighlighter": false
+    }
+  },
+  "mining": {
+    "mineshaft": {
+      "corpseFinder": false
+    }
+  },
+  "misc": {
+    "hoppityEggFinderGuess": false,
+    "highlighterColor": -11141121,
+    "highlighterMiddleClick": true,
+    "bestiaryTracker": {
+      "trackerHud": {
+        "enabled": false,
+        "x": 20,
+        "y": 100,
+        "scale": 1.0,
+        "anchor": "TOP_LEFT"
+      },
+      "maxDisplayedEntries": 5
+    },
+    "showHexOnDyedItemEverywhere": false,
+    "serverTracker": false,
+    "disableAbiphonePlacement": false,
+    "compatibility": {
+      "reiSearchBarCalculator": true
+    },
+    "partyCommands": {
+      "enabled": false,
+      "coords": false,
+      "warp": false,
+      "magic8Ball": false,
+      "diceGame": false,
+      "coinFlip": false,
+      "tps": false
+    }
+  },
+  "events": {
+    "raffle": {
+      "hud": {
+        "enabled": false,
+        "x": 20,
+        "y": 20,
+        "scale": 1.0,
+        "anchor": "TOP_LEFT"
+      },
+      "onlyShowIncomplete": false
+    },
+    "hoppityHunt": {
+      "eggFinderGuess": false,
+      "huntHud": {
+        "showHud": false,
+        "x": 150,
+        "y": 50,
+        "scale": 1.0,
+        "anchor": "TOP_LEFT"
+      },
+      "huntNotification": false
+    }
+  },
+  "vanilla": {
+    "hideWorldLoadingScreen": false,
+    "hideTutorialsToast": true,
+    "stopCursorResetPosition": false,
+    "displayOwnNametagUsername": false,
+    "uninterruptedMusic": false,
+    "overlay": {
+      "hideFireOverlay": false,
+      "hideArmorOverlay": false,
+      "hideFoodOverlay": false,
+      "hideStatusEffectsOverlay": false
+    },
+    "zoom": {
+      "enabled": false,
+      "mouseScrolling": false
+    },
+    "scrollableTooltip": {
+      "enabled": false,
+      "reverseScroll": false,
+      "startOnTop": false
+    },
+    "mob": {
+      "hideFireOnEntities": false
+    },
+    "itemModelCustomization": {
+      "enabled": false,
+      "swingDuration": 6,
+      "ignoreMiningEffects": false,
+      "mainHand": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "xRotation": 0.0,
+        "yRotation": 0.0,
+        "zRotation": 0.0
+      },
+      "offHand": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "xRotation": 0.0,
+        "yRotation": 0.0,
+        "zRotation": 0.0
+      }
+    },
+    "sound": {
+      "muteLightning": false,
+      "mutePlayerFall": false,
+      "muteEnderman": false,
+      "mutePhantom": false
+    }
+  }
+}

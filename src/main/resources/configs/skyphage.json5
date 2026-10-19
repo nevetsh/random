@@ -1,0 +1,95 @@
+{
+	// ESP
+	esp_toggled: false,
+	esp_targets: [],
+	esp_color: -4915405,
+	esp_width: 1.5,
+	esp_size: 0.0,
+	// Tracer
+	tracer_toggled: false,
+	tracer_targets: [],
+	tracer_color: -4915405,
+	tracer_width: 1.5,
+	// True Sight
+	truesight_toggled: false,
+	// No Particle
+	noparticle_toggled: false,
+	// Drill Fuel Patch
+	drillfuelpatch_toggled: false,
+	// Camera Distance
+	camera_toggled: false,
+	camera_distance: 4.0,
+	camera_clip: false,
+	// Sticky Keys
+	stickykeys_toggled: false,
+	stickykeys_monodirection: false,
+	// Auto Reel
+	autoreel_toggled: false,
+	autoreel_doubleclick: false,
+	autoreel_mindelay: 5,
+	autoreel_maxdelay: 10,
+	// Triggerbot
+	triggerbot_toggled: false,
+	triggerbot_targets: [],
+	triggerbot_ignoreinvisible: true,
+	triggerbot_ignorearmorstands: true,
+	triggerbot_cooldownperentity: 10,
+	// General Dev
+	generaldev_toggled: false,
+	generaldev_mouseclicks: false,
+	generaldev_containerclicks: false,
+	generaldev_mousedelta: false,
+	generaldev_abilities: false,
+	generaldev_translation: false,
+	generaldev_attributes: false,
+	generaldev_attributesselfonly: false,
+	// Auto Leaping
+	autoleaping_slot1: 0,
+	autoleaping_slot2: 0,
+	// Block ESP
+	blockesp_toggled: true,
+	blockesp_targets: [],
+	blockesp_color: -4915405,
+	blockesp_width: 1.5,
+	blockesp_scanradius: 10,
+	blockesp_scandelay: 1000.0,
+	blockesp_fancy: false,
+	// Mouse Freeze
+	mousefreeze_toggled: false,
+	mousefreeze_visual: false,
+	mousefreeze_alert: false,
+	// Test
+	test_toggled: false,
+	// Scripting
+	scripting_toggled: false,
+	// Null Bind
+	nullbind_toggled: false,
+	// Heil
+	heil_toggled: false,
+	heil_global: false,
+	// General Settings
+	general_toggled: false,
+	general_collapse: false,
+	general_formatting: true,
+	general_forcefrustrumtrue: false,
+	general_cutechat: false,
+	general_signhide: true,
+	// Player Size
+	playersize_toggled: false,
+	playersize_sizes: [],
+	// No Render
+	norender_toggled: false,
+	norendertargets: [],
+	// Pingless Dungeonbreaker
+	pinglessdungeonbreaker_toggled: false,
+	// Goof Settings
+	generalgoof_toggled: false,
+	generalgoof_emo: false,
+	generalgoof_a: false,
+	generalgoof_narcissism: false,
+	// World Scanner
+	worldscanner_toggled: true,
+	worldscanner_radius: 30,
+	// Lane Switch
+	laneswitch_toggled: true
+}

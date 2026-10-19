@@ -1,12 +1,11 @@
 # Credits
 
 MeowMod itself is MIT licensed (see the `license` field in `src/main/resources/fabric.mod.json`).
-Two modules are ports of other people's work and stay under the licence that work came with, so the
-notices belong here.
+Several modules are ports of other people's work and stay under the licences that work came with, so
+the notices belong here.
 
 ## OdinClient — BSD 3-Clause
 
-`Auto Click` ([AutoClick.kt](src/main/kotlin/com/meow/mod/features/AutoClick.kt)),
 `Auto Harp` ([AutoHarp.kt](src/main/kotlin/com/meow/mod/features/AutoHarp.kt)),
 `Auto Experiments` ([AutoExperiments.kt](src/main/kotlin/com/meow/mod/features/AutoExperiments.kt)) and
 `Trigger Bot` ([TriggerBot.kt](src/main/kotlin/com/meow/mod/features/TriggerBot.kt))
@@ -43,3 +42,11 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+## Trevor the Trapper helper — CC0 1.0
+
+`Trevor Helper` ([TrevorHelper.kt](src/main/kotlin/com/meow/mod/features/TrevorHelper.kt)) merges the two
+upstream Trevor helpers: [NoammAddons](https://github.com/NoammAddons/NoammAddons) (CC0 1.0 — no
+notice required, given here for attribution) and devoniandoogan's addon (no licence file published;
+kept here as attribution to the original author). Both are credited again in the module's
+"Watch upstream" setting, which polls the source repos for new commits.

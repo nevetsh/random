@@ -4,6 +4,7 @@ import com.meow.mod.Access
 import com.meow.mod.api.ChatUtils
 import com.meow.mod.api.ClickWait
 import com.meow.mod.api.ScreenUtils
+import com.meow.mod.api.humanDelay
 import com.mojang.blaze3d.platform.InputConstants
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
@@ -14,7 +15,6 @@ import net.minecraft.world.item.Items
 import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
 import kotlin.math.roundToInt
-import kotlin.random.Random
 
 // Auction house QoL: picks the listing duration for you, clicks the item price of a placed
 // BIN listing (Auction Helper - the sign it opens is yours to type into), confirms a BIN
@@ -46,7 +46,8 @@ import kotlin.random.Random
 object AutoAuction : Feature(
 	"autoAuction",
 	"Picks your auction duration.",
-	subcategory = "Auto Auction",
+	subcategory = "Automation",
+	heading = "Auto Auction",
 	displayName = "Auto Auction",
 	enabledByDefault = true
 ) {
@@ -61,17 +62,8 @@ object AutoAuction : Feature(
 		200.0,
 		50.0,
 		1000.0,
-		"Delay between the two clicks.",
+		"Delay between clicks, plus 10-20%.",
 		"Click Delay (ms)"
-	)
-
-	private val jitterData = addSlider(
-		"jitter",
-		50.0,
-		0.0,
-		200.0,
-		"Plus or minus on the delay.",
-		"Jitter (ms)"
 	)
 
 	// Auction Helper: once an item is placed in the Create BIN menu the gold ingot that
@@ -404,17 +396,11 @@ object AutoAuction : Feature(
 		clickWait.clicked(ScreenUtils.signature())
 		ScreenUtils.click(slot, false)
 		lastClick = System.currentTimeMillis()
-		nextDelay = paced()
+		nextDelay = humanDelay(delayData.get().toLong())
 	}
 
-	// The configured delay plus or minus its jitter, never below a millisecond: every click
-	// the module makes - price, clock, picker, confirm - is spaced by this, so the whole
-	// sequence moves at the pace the player set rather than at one fixed beat.
-	private fun paced(): Long {
-		val jitter = jitterData.get().toLong()
-		val wobble = if (jitter > 0) Random.nextLong(-jitter, jitter + 1) else 0L
-		return (delayData.get().toLong() + wobble).coerceAtLeast(1L)
-	}
+	// The configured delay randomized around its value (±10-20%): every click the module
+	// makes - price, clock, picker, confirm - is spaced by this rather than one fixed beat.
 
 	// How long the module stays armed after the "Create Auction" click, how long it waits for
 	// the duration picker to appear once the clock has been clicked, how long the custom

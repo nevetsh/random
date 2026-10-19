@@ -1,0 +1,13 @@
+{
+	"activeTheme": "PolyGlass Dark",
+	"accentColor": {
+		"value": [
+			43, 
+			75, 
+			255, 
+			255
+		],
+		"class": "org.polyfrost.compose.render.PolyColor"
+	},
+	"animations": true
+}

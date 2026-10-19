@@ -76,7 +76,7 @@ class ModuleKeysScreen(private val parent: Screen?) : Screen(Component.literal("
 
 	private fun drawRows(graphics: GuiGraphicsExtractor) {
 		// Alphabetical, like the modules in the config screen's sidebar.
-		val features = Config.features.sortedBy { it.displayName.lowercase() }
+		val features = Config.features.filter { it.listedFor() }.sortedBy { it.displayName.lowercase() }
 		val rowH = 22
 		val total = features.size * rowH
 		maxScroll = (total - contentH).coerceAtLeast(0).toDouble()

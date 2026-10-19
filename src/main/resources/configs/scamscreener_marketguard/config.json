@@ -1,0 +1,94 @@
+{
+  "underbiddingThreshold": 80,
+  "overbiddingThreshold": 120,
+  "absoluteThreshold": 10000.0,
+  "marketPriceBasis": "LOWEST_BIN",
+  "debug": false,
+  "updateNotificationsEnabled": true,
+  "warnOnUnmatchedProfitConfirmations": false,
+  "profitTrackerHudEnabled": false,
+  "playerHudPreset": "trade",
+  "playerHudShowUnavailableRows": false,
+  "shortNumberFormat": false,
+  "auctionPriceHudScreens": [
+    "bin_view"
+  ],
+  "playerHudScreens": [
+    "trade",
+    "profile",
+    "bin_view"
+  ],
+  "tradeGuardHudScreens": [
+    "trade"
+  ],
+  "minionProfitHudScreens": [
+    "minion"
+  ],
+  "forgeProfitHudScreens": [
+    "forge"
+  ],
+  "profitTrackerHudScreens": [
+    "ingame"
+  ],
+  "auctionPriceHudRows": [
+    "item",
+    "auction",
+    "lowest_bin",
+    "advice",
+    "volatility",
+    "liquidity",
+    "stale"
+  ],
+  "playerHudRows": [
+    "name",
+    "seen",
+    "scamscreener",
+    "status",
+    "wealth",
+    "profile_value",
+    "first_join",
+    "profile",
+    "value_coverage",
+    "value_missing",
+    "value_status",
+    "museum",
+    "museum_items",
+    "armor",
+    "equipment",
+    "pet",
+    "skills",
+    "uuid",
+    "data"
+  ],
+  "tradeGuardHudRows": [
+    "own_value",
+    "partner_value",
+    "difference",
+    "unpriced",
+    "data",
+    "warning"
+  ],
+  "minionProfitHudRows": [
+    "held_coins",
+    "profit",
+    "missing",
+    "loading",
+    "unavailable",
+    "stale"
+  ],
+  "forgeProfitHudRows": [
+    "profit",
+    "missing",
+    "loading",
+    "unavailable",
+    "stale"
+  ],
+  "profitTrackerHudRows": [
+    "bazaar",
+    "auction_house",
+    "minion",
+    "interest",
+    "allowance",
+    "total"
+  ]
+}

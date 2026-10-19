@@ -33,7 +33,8 @@ import kotlin.random.Random
 object AutoSalvage : Feature(
 	"autoSalvage",
 	"Fills the salvage menu and salvages.",
-	subcategory = "Auto Salvage",
+	subcategory = "Automation",
+	heading = "Auto Salvage",
 	displayName = "Auto Salvage"
 ) {
 	private val settingDelay = addSlider(

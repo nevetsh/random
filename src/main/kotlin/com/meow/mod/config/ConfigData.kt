@@ -51,6 +51,10 @@ open class ConfigData<T> @JvmOverloads constructor(
 	) : ConfigData<Boolean>(configName, ConfigType.SWITCH, initial, displayName, description) {
 		val subconfigs = mutableListOf<ConfigData<*>>()
 
+		// Whether the screens should list this module for the player using them. A dev-only
+		// module answers false for everyone but its author (see Feature.visibleToPlayer).
+		var listedFor: () -> Boolean = { true }
+
 		// For a module whose on/off control is a dropdown rather than the plain switch: that
 		// control has to stay listed even while the module is off, or it could never be turned
 		// back on. Everything else the module owns is hidden while it is off (see ConfigScreen).
@@ -91,7 +95,11 @@ open class ConfigData<T> @JvmOverloads constructor(
 		description: String = "",
 		parent: FeatureSwitch? = null,
 		val maxLength: Int = 96,
-		val secret: Boolean = false
+		val secret: Boolean = false,
+		// A colour is typed as #RRGGBB, but the screen also shows what the value looks like and
+		// offers a picker, so the row itself says the setting is a colour rather than guessing
+		// it from the text.
+		val color: Boolean = false
 	) : ConfigData<String>(configName, ConfigType.TEXT, initial, displayName, description, parent)
 
 	// One of a fixed set of strings, chosen from a dropdown rather than typed. The stored value

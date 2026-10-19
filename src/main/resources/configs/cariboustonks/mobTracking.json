@@ -1,0 +1,224 @@
+[
+  {
+    "name": "Frog Prince",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Littlefoot",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Grim Reaper",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "The Loch Emperor",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "SPARKLING",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Magma Boss",
+    "enabled": true,
+    "notifyOnSpawn": false,
+    "highlightable": false
+  },
+  {
+    "name": "Yeti",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Nessie",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Carrot King",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Ashfang",
+    "enabled": true,
+    "notifyOnSpawn": false,
+    "highlightable": false
+  },
+  {
+    "name": "Phantom Fisher",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Fiery Scuttler",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Blue Ringed Octopus",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Werewolf",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Ragnarok",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Barbarian Duke X",
+    "enabled": true,
+    "notifyOnSpawn": false,
+    "highlightable": false
+  },
+  {
+    "name": "Plhlegblast",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Silkbreeze",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Magma Pillar",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Great White Shark",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Bladesoul",
+    "enabled": true,
+    "notifyOnSpawn": false,
+    "highlightable": false
+  },
+  {
+    "name": "Minos Inquisitor",
+    "enabled": true,
+    "notifyOnSpawn": false,
+    "highlightable": false
+  },
+  {
+    "name": "Thunder",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Lord Jawbus",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Reindrake",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Wiki Tiki",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Giant Isopod",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Puddle Jumper",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "King Minos",
+    "enabled": true,
+    "notifyOnSpawn": false,
+    "highlightable": false
+  },
+  {
+    "name": "Water Hydra",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Manticore",
+    "enabled": true,
+    "notifyOnSpawn": false,
+    "highlightable": false
+  },
+  {
+    "name": "Alligator",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  },
+  {
+    "name": "Abyssal Miner",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Sphinx",
+    "enabled": true,
+    "notifyOnSpawn": false,
+    "highlightable": false
+  },
+  {
+    "name": "Mage Outlaw",
+    "enabled": true,
+    "notifyOnSpawn": false,
+    "highlightable": false
+  },
+  {
+    "name": "Vanquisher",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": true
+  },
+  {
+    "name": "Titanoboa",
+    "enabled": true,
+    "notifyOnSpawn": true,
+    "highlightable": false
+  }
+]

@@ -15,7 +15,8 @@ import java.util.concurrent.ConcurrentHashMap
 object AutoExperiments : Feature(
 	"autoExperiments",
 	"Solves Chronomatron and Ultrasequencer.",
-	subcategory = "Auto Experiments",
+	subcategory = "Automation",
+	heading = "Auto Experiments",
 	displayName = "Auto Experiments",
 	enabledByDefault = true
 ) {

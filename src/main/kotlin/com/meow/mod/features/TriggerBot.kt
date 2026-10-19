@@ -18,7 +18,8 @@ import net.minecraft.world.phys.HitResult
 object TriggerBot : Feature(
 	"triggerBot",
 	"Trigger bots for crystals and secrets.",
-	subcategory = "Auto Click",
+	// Its own page: the auto clicker that used to share it was retired as unsafe.
+	subcategory = "Trigger Bot",
 	displayName = "Trigger Bot",
 	enabledByDefault = true,
 	heading = "Trigger Bot"

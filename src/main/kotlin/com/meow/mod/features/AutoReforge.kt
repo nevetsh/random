@@ -34,7 +34,8 @@ import kotlin.random.Random
 object AutoReforge : Feature(
 	"autoReforge",
 	"Types your reforge, clicks the anvil.",
-	subcategory = "Auto Reforge",
+	subcategory = "Automation",
+	heading = "Auto Reforge",
 	displayName = "Auto Reforge"
 ) {
 	private val settingDelay = addSlider(

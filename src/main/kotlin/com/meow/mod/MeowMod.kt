@@ -6,24 +6,25 @@ import com.meow.mod.config.Config
 import com.meow.mod.events.MeowEvents
 import com.meow.mod.features.AutoAuction
 import com.meow.mod.features.AutoBz
-import com.meow.mod.features.AutoClick
 import com.meow.mod.features.AutoCombine
 import com.meow.mod.features.AutoExperiments
 import com.meow.mod.features.AutoFragrun
 import com.meow.mod.features.AutoHarp
+import com.meow.mod.features.AutoPet
 import com.meow.mod.features.AutoReforge
 import com.meow.mod.features.AutoSalvage
 import com.meow.mod.features.AutoSlayer
+import com.meow.mod.features.ConfigSharing
 import com.meow.mod.features.CustomName
 import com.meow.mod.features.DiscordChat
 import com.meow.mod.features.FastPets
 import com.meow.mod.features.Feature
-import com.meow.mod.features.HideFromServers
 import com.meow.mod.features.HideServerId
 import com.meow.mod.features.ModUpdater
 import com.meow.mod.features.ModuleKeys
 import com.meow.mod.features.SkipCommandConfirm
 import com.meow.mod.features.TriggerBot
+import com.meow.mod.features.TrevorHelper
 import com.meow.mod.features.WorldScanner
 import com.meow.mod.skyblock.LocationUtils
 import net.fabricmc.api.ClientModInitializer
@@ -47,10 +48,11 @@ object MeowMod : ClientModInitializer {
 	// order the settings are listed in. Which heading a setting belongs to is declared on the
 	// setting itself, so a module can add one to General from anywhere.
 	private val allFeatures: List<Feature> = listOf(
-		AutoFragrun, HideFromServers, AutoCombine, ModUpdater,
-		AutoHarp, AutoExperiments, TriggerBot, AutoClick, WorldScanner,
+		AutoFragrun, AutoCombine, ConfigSharing,
+		AutoHarp, AutoExperiments, TriggerBot, WorldScanner,
 		CustomName, DiscordChat, SkipCommandConfirm, HideServerId,
-		AutoAuction, AutoBz, AutoSlayer, AutoSalvage, AutoReforge
+		AutoAuction, AutoBz, AutoSlayer, AutoSalvage, AutoReforge,
+		TrevorHelper, AutoPet
 	)
 
 	private fun applyAccess() {
@@ -62,11 +64,22 @@ object MeowMod : ClientModInitializer {
 	override fun onInitializeClient() {
 		// The General page is split into named groups, listed in this order however the modules
 		// happen to register their settings.
-		Config.declareHeadings(Config.GENERAL, "Mod Information", "Keybinds", "Cosmetics", "Misc")
+		Config.declareHeadings(Config.GENERAL, "Keybinds", "Cosmetics", "Misc")
 
-		// The Auto Click page holds the held-button clicker and the crystal/secret trigger bot,
-		// split into a group each.
-		Config.declareHeadings("Auto Click", "Auto Click", "Trigger Bot")
+		// The ten auto modules share one page. Each keeps its own heading, so the page still
+		// reads as one group per module instead of one long list. Auction and Bazaar are the
+		// day-to-day ones; Slayer is the least used, so it sits at the end.
+		Config.declareHeadings(
+			"Automation",
+			"Auto Auction", "Auto Bazaar", "Auto Fragrun",
+			"Auto Combine", "Auto Experiments", "Auto Harp", "Auto Pet", "Auto Reforge", "Auto Salvage",
+			"Auto Slayer"
+		)
+
+		// The Auto Click page was retired with the auto clicker; the Trigger Bot lives on
+		// a page of its own now, with no groups to split it into. The Trevor Helper page
+		// groups its settings the way the two upstream mods sectioned them.
+		Config.declareHeadings("Trevor Helper", "General", "ESP", "Automation", "Colors", "HUD", "Upstream")
 
 		Access.start(Minecraft.getInstance().user.profileId)
 
@@ -83,7 +96,6 @@ object MeowMod : ClientModInitializer {
 		AutoHarp.initialize()
 		AutoExperiments.initialize()
 		TriggerBot.initialize()
-		AutoClick.initialize()
 		WorldScanner.initialize()
 		AutoFragrun.initialize()
 		ModuleKeys.initialize()
@@ -93,7 +105,10 @@ object MeowMod : ClientModInitializer {
 		AutoSlayer.initialize()
 		AutoSalvage.initialize()
 		AutoReforge.initialize()
+		TrevorHelper.initialize()
 		FastPets.initialize()
+
+		ModUpdater.start()
 
 		Config.load()
 

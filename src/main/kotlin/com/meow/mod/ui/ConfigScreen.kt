@@ -15,6 +15,7 @@ import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import java.awt.Color
 import kotlin.math.roundToInt
 
 class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
@@ -36,9 +37,20 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	private var editingText: ConfigData.Text? = null
 	private var textBuffer: String = ""
 
+	// The colour picker, open for one colour setting at a time. Its hue, saturation and value
+	// are held here rather than read back from the hex string, because a drag changes all
+	// three and a round trip through the string would make the marker jump.
+	private var picking: ConfigData.Text? = null
+	private var pickHue = 0f
+	private var pickSat = 0f
+	private var pickVal = 1f
+	private var pickMode = 0
+
 	// The dropdown that is open, if any. The list is drawn over everything else, and its rows
 	// are worked out from the open control's own box when a click arrives.
 	private var expandedChoice: ConfigData.Choice? = null
+	// How far the open dropdown has been scrolled, so long option lists fit on screen.
+	private var choiceScroll = 0
 
 	private var rows = listOf<Control>()
 	private var closeRect: Rect? = null
@@ -72,7 +84,7 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	private fun pctH(p: Double) = (height * p / 100.0).roundToInt()
 
 	override fun init() {
-		if (Config.subcategories.isNotEmpty() && selected !in Config.subcategories) {
+		if (Config.subcategories.isNotEmpty() && (selected !in Config.subcategories || !pageVisible(selected))) {
 			selected = Config.subcategories.first()
 		}
 		lastPage = selected
@@ -98,6 +110,7 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		drawClose(graphics)
 		drawContent(graphics, mouseX, mouseY)
 		drawChoiceOverlay(graphics)
+		drawColorPicker(graphics)
 	}
 
 	private data class Entry(val name: String, val rect: Rect)
@@ -107,8 +120,16 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	private fun listedSubcategories(): List<String> {
 		val query = search.trim()
 		return Config.subcategories
+			.filter { pageVisible(it) }
 			.filter { query.isEmpty() || it.contains(query, ignoreCase = true) }
 			.sortedWith(compareByDescending<String> { it == Config.GENERAL }.thenBy { it.lowercase() })
+	}
+
+	// A page stays in the list while at least one module on it is meant for this player: a
+	// dev-only module takes its page with it when it is not for them.
+	private fun pageVisible(page: String): Boolean {
+		val owners = Config.features.filter { it.subcategory == page }
+		return owners.isEmpty() || owners.any { it.listedFor() }
 	}
 
 	private fun sidebarEntries(): List<Entry> = listedSubcategories().mapIndexed { index, sub ->
@@ -219,7 +240,7 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 			val controlW = when (configData) {
 				is ConfigData.FeatureSwitch, is ConfigData.Switch -> 30
 				is ConfigData.Slider -> 104
-				is ConfigData.Text -> minOf(160, rowW / 2) + 6
+				is ConfigData.Text -> minOf(160, rowW / 2) + 6 + (if (configData.color) COLOR_SWATCH_W + 2 else 0)
 				is ConfigData.Button -> 66
 				is ConfigData.Choice -> minOf(150, rowW / 2) + 6
 				else -> 0
@@ -265,8 +286,18 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 				is ConfigData.Text -> {
 					val fieldW = minOf(160, rowW / 2)
 					val field = Rect(rowX + rowW - fieldW - 2, rowY + 4, fieldW, 12)
+					// A colour's swatch sits to the left of its hex field, so the value can be
+					// read at a glance. The swatch belongs to the field's click target: both
+					// open the picker.
+					val swatch = if (configData.color) {
+						Rect(field.x - COLOR_SWATCH_W - 2, field.y, COLOR_SWATCH_W, field.h)
+					} else {
+						null
+					}
+					if (swatch != null) drawColorSwatch(graphics, swatch, configData)
 					drawTextField(graphics, field, configData)
-					newRows.add(Control(configData, field, field))
+					val hit = if (swatch != null) Rect(swatch.x, field.y, field.x + field.w - swatch.x, field.h) else field
+					newRows.add(Control(configData, field, hit))
 				}
 
 				is ConfigData.Button -> {
@@ -359,6 +390,137 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		Render2D.text(graphics, shown, rect.x + 3, rect.y + 2, color, false, 0.85f)
 	}
 
+	private fun parseHex(text: String): Int? {
+		val hex = text.trim().removePrefix("#")
+		if (hex.length != 6) return null
+		return hex.toIntOrNull(16)
+	}
+
+	private fun hexOf(rgb: Int): String = "#%06X".format(rgb and 0xFFFFFF)
+
+	// The picker works in hue, saturation and value; the setting keeps storing the hex string
+	// the rest of the mod already reads.
+	private fun syncPick(text: ConfigData.Text) {
+		val rgb = parseHex(text.get()) ?: run {
+			pickHue = 0f
+			pickSat = 0f
+			pickVal = 1f
+			return
+		}
+		val hsb = Color.RGBtoHSB((rgb shr 16) and 0xFF, (rgb shr 8) and 0xFF, rgb and 0xFF, null)
+		pickHue = hsb[0]
+		pickSat = hsb[1]
+		pickVal = hsb[2]
+	}
+
+	private fun openPicker(text: ConfigData.Text) {
+		syncPick(text)
+		picking = text
+		pickMode = 0
+		editingText = text
+		textBuffer = text.get()
+	}
+
+	private fun pickMenu(anchor: Rect): Rect {
+		var y = anchor.y + anchor.h + 1
+		if (y + COLOR_MENU_H > rightY + rightH) y = anchor.y - COLOR_MENU_H - 1
+		val x = (anchor.x + anchor.w - COLOR_MENU_W).coerceIn(rightX + 2, rightX + rightW - COLOR_MENU_W - 2)
+		return Rect(x, y.coerceAtLeast(rightY + 2), COLOR_MENU_W, COLOR_MENU_H)
+	}
+
+	private fun pickSv(menu: Rect) = Rect(menu.x + COLOR_PAD, menu.y + COLOR_PAD, COLOR_SV_W, COLOR_SV_H)
+	private fun pickHueBar(menu: Rect) = Rect(menu.x + COLOR_PAD, menu.y + COLOR_PAD + COLOR_SV_H + COLOR_GAP, COLOR_SV_W, COLOR_HUE_H)
+	private fun pickHexRow(menu: Rect) = Rect(menu.x + COLOR_PAD, menu.y + COLOR_PAD + COLOR_SV_H + COLOR_GAP + COLOR_HUE_H + COLOR_GAP, COLOR_SV_W, 12)
+
+	// The picker is followed by its own setting rather than by the page, so a drag keeps
+	// working even when the row has been scrolled away from the pointer.
+	private fun applyPick(mx: Int, my: Int) {
+		val text = picking ?: return
+		val anchor = rows.firstOrNull { it.data === text }?.track ?: return
+		val menu = pickMenu(anchor)
+		val sv = pickSv(menu)
+		val hue = pickHueBar(menu)
+		when (pickMode) {
+			MODE_SV -> {
+				pickSat = ((mx - sv.x).toFloat() / (sv.w - 1)).coerceIn(0f, 1f)
+				pickVal = 1f - ((my - sv.y).toFloat() / (sv.h - 1)).coerceIn(0f, 1f)
+			}
+
+			MODE_HUE -> pickHue = ((mx - hue.x).toFloat() / (hue.w - 1)).coerceIn(0f, 0.999f)
+		}
+		val rgb = Color.HSBtoRGB(pickHue, pickSat, pickVal) and 0xFFFFFF
+		val hex = hexOf(rgb)
+		text.set(hex)
+		if (editingText === text) textBuffer = hex
+	}
+
+	private fun drawColorSwatch(graphics: GuiGraphicsExtractor, rect: Rect, text: ConfigData.Text) {
+		val shown = if (editingText === text) textBuffer else text.get()
+		val rgb = parseHex(shown)
+		if (rgb != null) {
+			Render2D.argb(graphics, rect.x, rect.y, rect.w, rect.h, (0xFF shl 24) or rgb)
+		} else {
+			Render2D.rect(graphics, rect.x, rect.y, rect.w, rect.h, ColorPalette.TERTIARY)
+		}
+		Render2D.outline(graphics, rect.x, rect.y, rect.w, rect.h, ColorPalette.argb(ColorPalette.OUTLINE))
+	}
+
+	// Saturation runs left to right as a white-to-hue ramp, and value runs top to bottom as a
+	// black veil over it. The hue bar under the square picks the ramp's colour. Both are drawn
+	// a line at a time so the gradient is smooth without a shader.
+	private fun drawColorPicker(graphics: GuiGraphicsExtractor) {
+		val text = picking ?: return
+		val anchor = rows.firstOrNull { it.data === text }?.track ?: run {
+			picking = null
+			return
+		}
+		val menu = pickMenu(anchor)
+		Render2D.rect(graphics, menu.x, menu.y, menu.w, menu.h, ColorPalette.PRIMARY)
+		Render2D.outline(graphics, menu.x, menu.y, menu.w, menu.h, ColorPalette.argb(ColorPalette.ACCENT))
+
+		val sv = pickSv(menu)
+		val hue = pickHueBar(menu)
+		val base = Color.HSBtoRGB(pickHue, 1f, 1f)
+		val baseRed = (base shr 16) and 0xFF
+		val baseGreen = (base shr 8) and 0xFF
+		val baseBlue = base and 0xFF
+		for (column in 0 until sv.w) {
+			val t = column.toFloat() / (sv.w - 1)
+			val r = (baseRed + (255 - baseRed) * (1f - t)).roundToInt()
+			val g = (baseGreen + (255 - baseGreen) * (1f - t)).roundToInt()
+			val b = (baseBlue + (255 - baseBlue) * (1f - t)).roundToInt()
+			Render2D.rect(graphics, sv.x + column, sv.y, 1, sv.h, Color(r, g, b))
+		}
+		for (row in 0 until sv.h) {
+			val alpha = (row * 255 / (sv.h - 1)) shl 24
+			Render2D.argb(graphics, sv.x, sv.y + row, sv.w, 1, alpha)
+		}
+		for (column in 0 until hue.w) {
+			val h = column.toFloat() / (hue.w - 1) * 0.999f
+			Render2D.rect(graphics, hue.x + column, hue.y, 1, hue.h, Color(Color.HSBtoRGB(h, 1f, 1f)))
+		}
+
+		val markerX = sv.x + (pickSat * (sv.w - 1)).roundToInt()
+		val markerY = sv.y + ((1f - pickVal) * (sv.h - 1)).roundToInt()
+		Render2D.outline(graphics, markerX - 2, markerY - 2, 5, 5, (0xFF shl 24))
+		Render2D.outline(graphics, markerX - 1, markerY - 1, 3, 3, (0xFF shl 24) or 0x000000)
+		val hueX = hue.x + (pickHue * (hue.w - 1)).roundToInt()
+		Render2D.outline(graphics, hueX - 1, hue.y - 1, 3, hue.h + 2, (0xFF shl 24))
+
+		val hexRow = pickHexRow(menu)
+		val editing = editingText === text
+		Render2D.rect(graphics, hexRow.x, hexRow.y, hexRow.w, hexRow.h, ColorPalette.TERTIARY)
+		Render2D.outline(
+			graphics, hexRow.x, hexRow.y, hexRow.w, hexRow.h,
+			ColorPalette.argb(if (editing) ColorPalette.ACCENT else ColorPalette.OUTLINE)
+		)
+		val shown = if (editing) textBuffer + "_" else text.get()
+		Render2D.text(
+			graphics, truncate(shown, hexRow.w - 6, 0.85f), hexRow.x + 3, hexRow.y + 2,
+			ColorPalette.argb(if (editing) ColorPalette.ACCENT else ColorPalette.TEXT), false, 0.85f
+		)
+	}
+
 	private fun drawButton(graphics: GuiGraphicsExtractor, rect: Rect, label: String) {
 		val hover = rect.contains(mouseX, mouseY)
 		Render2D.rect(graphics, rect.x, rect.y, rect.w, rect.h, if (hover) ColorPalette.OUTLINE2 else ColorPalette.TERTIARY)
@@ -377,8 +539,10 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		Render2D.text(graphics, "v", rect.x + rect.w - 8, rect.y + 2, ColorPalette.argb(ColorPalette.LIGHT_TEXT), false, 0.85f)
 	}
 
-	private fun choiceMenu(anchor: Rect, choice: ConfigData.Choice): Rect =
-		Rect(anchor.x, anchor.y + anchor.h + 1, anchor.w, choice.options.size * CHOICE_ITEM_H)
+	private fun choiceMenu(anchor: Rect, choice: ConfigData.Choice): Rect {
+		val visible = minOf(choice.options.size, MAX_CHOICE_VISIBLE)
+		return Rect(anchor.x, anchor.y + anchor.h + 1, anchor.w, visible * CHOICE_ITEM_H)
+	}
 
 	private fun choiceItem(menu: Rect, index: Int): Rect =
 		Rect(menu.x, menu.y + index * CHOICE_ITEM_H, menu.w, CHOICE_ITEM_H)
@@ -387,10 +551,14 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		val choice = expandedChoice ?: return
 		val control = rows.firstOrNull { it.data === choice } ?: return
 		val menu = choiceMenu(control.track, choice)
+		val maxScroll = (choice.options.size - MAX_CHOICE_VISIBLE).coerceAtLeast(0)
+		choiceScroll = choiceScroll.coerceIn(0, maxScroll)
 		Render2D.rect(graphics, menu.x, menu.y, menu.w, menu.h, ColorPalette.PRIMARY)
 		Render2D.outline(graphics, menu.x, menu.y, menu.w, menu.h, ColorPalette.argb(ColorPalette.ACCENT))
-		choice.options.forEachIndexed { index, option ->
-			val item = choiceItem(menu, index)
+		val visibleEnd = minOf(choiceScroll + MAX_CHOICE_VISIBLE, choice.options.size)
+		(choiceScroll until visibleEnd).forEachIndexed { displayIndex, index ->
+			val option = choice.options[index]
+			val item = Rect(menu.x, menu.y + displayIndex * CHOICE_ITEM_H, menu.w, CHOICE_ITEM_H)
 			if (option == choice.get()) Render2D.rect(graphics, item.x, item.y, item.w, item.h, ColorPalette.TERTIARY)
 			val color = if (item.contains(mouseX, mouseY)) ColorPalette.argb(ColorPalette.ACCENT) else ColorPalette.argb(ColorPalette.TEXT)
 			Render2D.text(graphics, truncate(option, item.w - 6, 0.85f), item.x + 3, item.y + 2, color, false, 0.85f)
@@ -402,21 +570,57 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		val my = mouseButtonEvent.y.toInt()
 		if (mouseButtonEvent.button() != 0) return super.mouseClicked(mouseButtonEvent, bl)
 
+		// An open colour picker owns the click: a press in the square or the hue bar starts a
+		// drag there, a press on the hex row puts the caret in it, and a press anywhere else
+		// closes the picker.
+		picking?.let { text ->
+			val anchor = rows.firstOrNull { it.data === text }?.track
+			val menu = anchor?.let { pickMenu(it) }
+			if (menu != null && menu.contains(mx, my)) {
+				when {
+					pickSv(menu).contains(mx, my) -> {
+						pickMode = MODE_SV
+						applyPick(mx, my)
+					}
+
+					pickHueBar(menu).contains(mx, my) -> {
+						pickMode = MODE_HUE
+						applyPick(mx, my)
+					}
+
+					pickHexRow(menu).contains(mx, my) -> {
+						editingText = text
+						textBuffer = text.get()
+					}
+				}
+				return true
+			}
+			commitTextEdit()
+			picking = null
+			pickMode = 0
+			return true
+		}
+
 		// An open dropdown owns the next click: it either picks an option or is dismissed, and
 		// nothing underneath it is touched either way.
 		expandedChoice?.let { choice ->
 			val control = rows.firstOrNull { it.data === choice }
 			if (control != null) {
 				val menu = choiceMenu(control.track, choice)
-				choice.options.forEachIndexed { index, option ->
-					if (choiceItem(menu, index).contains(mx, my)) {
-						choice.set(option)
+				val maxScroll = (choice.options.size - MAX_CHOICE_VISIBLE).coerceAtLeast(0)
+				val visibleEnd = minOf(choiceScroll + MAX_CHOICE_VISIBLE, choice.options.size)
+				(choiceScroll until visibleEnd).forEachIndexed { displayIndex, index ->
+					val item = Rect(menu.x, menu.y + displayIndex * CHOICE_ITEM_H, menu.w, CHOICE_ITEM_H)
+					if (item.contains(mx, my)) {
+						choice.set(choice.options[index])
 						expandedChoice = null
+						choiceScroll = 0
 						return true
 					}
 				}
 			}
 			expandedChoice = null
+			choiceScroll = 0
 			return true
 		}
 
@@ -470,6 +674,10 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 
 				is ConfigData.Text -> {
 					if (control.valueRect?.contains(mx, my) == true) {
+						if (data.color) {
+							openPicker(data)
+							return true
+						}
 						editingText = data
 						textBuffer = if (data.secret) "" else data.get()
 						return true
@@ -502,10 +710,11 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 					return true
 				}
 
-				is ConfigData.Choice -> {
-					expandedChoice = data
-					return true
-				}
+			is ConfigData.Choice -> {
+				expandedChoice = data
+				choiceScroll = 0
+				return true
+			}
 
 				else -> {}
 			}
@@ -526,9 +735,16 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 		if (!text.secret || textBuffer.isNotBlank()) text.set(textBuffer)
 		editingText = null
 		textBuffer = ""
+		// The hex string may have been typed rather than dragged, so the picker's markers
+		// follow it when the edit lands.
+		if (picking === text) syncPick(text)
 	}
 
 	override fun mouseDragged(mouseButtonEvent: MouseButtonEvent, d: Double, e: Double): Boolean {
+		if (picking != null && pickMode != 0) {
+			applyPick(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())
+			return true
+		}
 		val slider = dragging ?: return super.mouseDragged(mouseButtonEvent, d, e)
 		rows.firstOrNull { it.data === slider }?.let {
 			updateSlider(slider, mouseButtonEvent.x.toInt(), it.track)
@@ -537,6 +753,10 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	}
 
 	override fun mouseReleased(mouseButtonEvent: MouseButtonEvent): Boolean {
+		if (pickMode != 0) {
+			pickMode = 0
+			return true
+		}
 		if (dragging != null) {
 			dragging = null
 			return true
@@ -551,8 +771,14 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 	}
 
 	override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
+		// Scroll the open dropdown's options when one is expanded.
+		expandedChoice?.let { choice ->
+			val maxScroll = (choice.options.size - MAX_CHOICE_VISIBLE).coerceAtLeast(0)
+			choiceScroll = (choiceScroll - verticalAmount.toInt()).coerceIn(0, maxScroll)
+			return true
+		}
 		if (maxScroll > 0) {
-			scroll -= verticalAmount * 15
+			scroll -= verticalAmount * SCROLL_STEP
 			return true
 		}
 		return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
@@ -648,6 +874,8 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 				InputConstants.KEY_ESCAPE -> {
 					editingText = null
 					textBuffer = ""
+					picking = null
+					pickMode = 0
 					return true
 				}
 
@@ -660,6 +888,13 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 					textBuffer = ""
 					return true
 				}
+			}
+			return true
+		}
+		if (picking != null) {
+			if (keyEvent.key() == InputConstants.KEY_ESCAPE) {
+				picking = null
+				pickMode = 0
 			}
 			return true
 		}
@@ -705,5 +940,24 @@ class ConfigScreen : Screen(Component.literal("MeowMod.ConfigScreen")) {
 
 		// The height of one row in an open dropdown.
 		const val CHOICE_ITEM_H = 12
+
+		// How many dropdown items fit on screen at once before scrolling is needed.
+		const val MAX_CHOICE_VISIBLE = 10
+
+		// One wheel notch moves the page by a little over one row.
+		const val SCROLL_STEP = 22.0
+
+		// The colour picker: a saturation/value square over a hue bar, with the hex field
+		// underneath, and the swatch that sits beside a colour's own field.
+		const val COLOR_SWATCH_W = 12
+		const val COLOR_MENU_W = 96
+		const val COLOR_MENU_H = 80
+		const val COLOR_SV_W = 88
+		const val COLOR_SV_H = 44
+		const val COLOR_HUE_H = 8
+		const val COLOR_PAD = 4
+		const val COLOR_GAP = 4
+		const val MODE_SV = 1
+		const val MODE_HUE = 2
 	}
 }

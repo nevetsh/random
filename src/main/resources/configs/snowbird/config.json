@@ -1,0 +1,6 @@
+{
+  "@snowbird:data": {
+    "donatorName": true,
+    "donatorEmblem": true
+  }
+}

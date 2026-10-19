@@ -19,14 +19,7 @@ import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
-object ModUpdater : Feature(
-	"modUpdater",
-	"Downloads newer builds from GitHub.",
-	subcategory = "General",
-	displayName = "Auto Updater",
-	enabledByDefault = true,
-	heading = "Mod Information"
-) {
+object ModUpdater {
 	private const val REPO = "nevetsh/random"
 	private const val API = "https://api.github.com/repos/$REPO"
 	private const val STAGING_JAR = "meowmod-update.jar"
@@ -37,33 +30,13 @@ object ModUpdater : Feature(
 	private const val KILL_WATCHDOG_MS = 15_000L
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 
-	private val SETTING_AUTO_RESTART = addSwitch(
-		"autoRestart",
-		true,
-		"Restart once an update is downloaded.",
-		"Auto Restart",
-		heading = "Mod Information"
-	)
-
-	// The kill switch in the General screen: end this session, install a newer build if there
-	// is one, then start the client again from the same command line.
-	private val restartButton = addButton(
-		"restart",
-		"Install any update, then restart.",
-		"Kill Switch",
-		label = "Restart",
-		heading = "Mod Information",
-		action = { killAndRelaunch() }
-	)
-
 	private val started = AtomicBoolean(false)
-	private val restartRequested = AtomicBoolean(false)
 	private val restartScriptLaunched = AtomicBoolean(false)
 	private val scriptCount = AtomicInteger()
 
 	private data class Candidate(val tag: String, val url: String, val name: String)
 
-	override fun onEnable() {
+	fun start() {
 		if (started.getAndSet(true)) return
 		Thread({ checkForUpdates() }, "MeowMod-Updater").apply { isDaemon = true }.start()
 	}
@@ -100,9 +73,9 @@ object ModUpdater : Feature(
 
 			ChatUtils.sendMessage("&aMeowMod update &f${candidate.tag}&a downloaded (current &f${currentVersion()}&a).", true)
 
-			// A restart needs the command line this client was started with. Without one the swap
-			// still happens, the client just cannot bring itself back.
-			val canRestart = SETTING_AUTO_RESTART.get() && relaunchCommand() != null
+			// Always auto-restart when an update is downloaded; the swap script waits for this
+			// process to disappear and then starts the client again from the same command line.
+			val canRestart = relaunchCommand() != null
 			if (!install(gameDir, gameDir.resolve("mods"), staging, codeSource, candidate.tag, canRestart)) return
 			if (canRestart) {
 				ChatUtils.sendMessage("&aInstalling update and restarting the client...", true)
@@ -195,6 +168,7 @@ object ModUpdater : Feature(
 		val staged = staging?.toAbsolutePath()?.toString()
 		val target = tag?.replace(Regex("[^A-Za-z0-9._-]"), "_")?.removePrefix("v")
 			?.let { modsDir.resolve("meowmod-$it.jar").toAbsolutePath().toString() }
+		val modsDirStr = modsDir.toAbsolutePath().toString()
 
 		val relaunchLine = when {
 			relaunch == null -> ""
@@ -232,7 +206,10 @@ object ModUpdater : Feature(
 					"powershell -NoProfile -NonInteractive -Command \"Start-Sleep -Seconds 1\" >nul 2>&1",
 					"goto swap",
 					":install",
-					"move /y \"$staged\" \"$target\" >nul 2>&1"
+					"move /y \"$staged\" \"$target\" >nul 2>&1",
+					// Delete any old meowmod jars in the mods folder so only the new version
+					// remains. The new target itself is skipped.
+					"for %%f in (\"$modsDirStr\\meowmod-*.jar\") do if not \"%%f\" == \"$target\" del /f /q \"%%f\" >nul 2>&1"
 				)
 			}
 			lines += ":relaunch"
@@ -247,10 +224,13 @@ object ModUpdater : Feature(
 			)
 			if (staged != null && target != null) {
 				lines += listOf(
-					"if [ -e \"$staged\" ]; then",
-					"rm -f \"$old\"",
-					"mv -f \"$staged\" \"$target\"",
-					"fi"
+			"if [ -e \"$staged\" ]; then",
+				"rm -f \"$old\"",
+				"mv -f \"$staged\" \"$target\"",
+				// Delete any old meowmod jars in the mods folder so only the new version
+				// remains. The new target itself is skipped.
+				"for f in \"$modsDirStr\"/meowmod-*.jar; do [ \"\$f\" = \"$target\" ] || rm -f \"\$f\"; done",
+				"fi"
 				)
 			}
 			if (relaunchLine.isNotEmpty()) lines += relaunchLine
@@ -282,8 +262,6 @@ object ModUpdater : Feature(
 	 * it is rebuilt from the running JVM instead (see RelaunchCommand).
 	 */
 	private fun relaunchCommand(): String? = RelaunchCommand.current()
-
-	/** The jar this client is running from, or null when there is none (dev environment). */
 	private fun jarFile(): File? {
 		val file = try {
 			val location = MeowMod::class.java.protectionDomain?.codeSource?.location ?: return null
@@ -300,85 +278,6 @@ object ModUpdater : Feature(
 		.followRedirects(HttpClient.Redirect.NORMAL)
 		.build()
 
-	/**
-	 * The kill switch: end this session, install a newer build when one exists, and start the
-	 * client again. Runs off the render thread, and only once: a second click while the first is
-	 * still waiting on the network is ignored.
-	 */
-	fun killAndRelaunch() {
-		if (!restartRequested.compareAndSet(false, true)) return
-		ChatUtils.sendMessage("&cKill switch: ending this session, then starting the client again.", true)
-		Thread({ relaunch() }, "MeowMod-KillSwitch").apply { isDaemon = true }.start()
-	}
-
-	private fun relaunch() {
-		val gameDir = loader().gameDir
-		// Ending the session without being able to start it again would only close the game, so
-		// both pieces are checked, and the one that is missing is named.
-		val currentJar = jarFile() ?: return cannotRelaunch("its own jar")
-		if (relaunchCommand() == null) return cannotRelaunch("the command it was started with")
-
-		if (restartScriptLaunched.get()) {
-			// The auto updater is already restarting the client: a second restart would race it.
-			ChatUtils.sendMessage("&cKill switch: a relaunch is already under way, not starting a second one.", true)
-			restartRequested.set(false)
-			return
-		}
-
-		val (staging, tag) = stageUpdate(gameDir)
-		if (!install(gameDir, gameDir.resolve("mods"), staging, currentJar, tag, true)) {
-			ChatUtils.sendMessage("&cKill switch: the relaunch script would not start; the session is left running.", true)
-			restartRequested.set(false)
-			return
-		}
-
-		if (tag != null) {
-			ChatUtils.sendMessage("&aInstalling MeowMod &f$tag&a, then starting the client again.", true)
-		} else {
-			ChatUtils.sendMessage("&7MeowMod is up to date; starting the client again.", true)
-		}
-		endSession()
-	}
-
-	/**
-	 * Refuses the restart and says which piece is missing, because closing the session without a
-	 * way back would just end the game.
-	 */
-	private fun cannotRelaunch(what: String) {
-		LOGGER.warn("[MeowMod] Kill switch: cannot see {}", what)
-		ChatUtils.sendMessage("&cKill switch: MeowMod cannot see $what, so it cannot restart itself. Start the client from the launcher.", true)
-		restartRequested.set(false)
-	}
-
-	/**
-	 * Downloads a newer build into the staging file, if there is one. Returns the staged file and
-	 * its tag, or (null, null) when already up to date or the check failed: the kill switch still
-	 * restarts, it just has nothing new to install.
-	 */
-	private fun stageUpdate(gameDir: Path): Pair<Path?, String?> {
-		if (loader().isDevelopmentEnvironment) return null to null
-		return try {
-			val client = httpClient()
-			val candidate = fetchFromReleases(client) ?: fetchFromFolder(client)
-			if (candidate == null) {
-				LOGGER.info("[MeowMod] Kill switch: no update source found on {}", REPO)
-				return null to null
-			}
-			if (compareVersions(parseVersion(candidate.tag), parseVersion(currentVersion())) <= 0) {
-				LOGGER.info("[MeowMod] Kill switch: already up to date (v{})", currentVersion())
-				return null to null
-			}
-			val staging = gameDir.resolve(STAGING_JAR)
-			Files.deleteIfExists(staging)
-			download(client, candidate.url, staging)
-			LOGGER.info("[MeowMod] Kill switch: downloaded {} ({})", candidate.tag, candidate.name)
-			staging to candidate.tag
-		} catch (e: Exception) {
-			// A failed check must not cost the user the restart they asked for.
-			LOGGER.warn("[MeowMod] Kill switch: update check failed: {}", e.message)
-			null to null
-		}
-	}
 
 	/**
 	 * Ends this session. The client is asked to shut down normally, and a watchdog halts the

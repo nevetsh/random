@@ -1,0 +1,134 @@
+{
+	"flipTopOptionOrder": false,
+	"searchDistance": 2,
+	"marqueeSelectionAnim": true,
+	"pageAnimationDuration": 0.3,
+	"pageOpacity": 88.0,
+	"sidebarOpacity": 80.0,
+	"keybindClosesGui": false,
+	"hudSettingsKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.e"
+		],
+		"mods": 2
+	},
+	"uiSoundVolume": 1.0,
+	"enableUIClickSounds": true,
+	"oneConfigKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.backslash"
+		]
+	},
+	"hudDuplicateKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.d"
+		],
+		"mods": 2
+	},
+	"enableHudEditorSounds": true,
+	"hudResetKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.r"
+		],
+		"mods": 2
+	},
+	"instantSearch": true,
+	"enableUIMusicDucking": true,
+	"guiOpenAnimation": true,
+	"hudLockKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.l"
+		],
+		"mods": 2
+	},
+	"showKeybindHints": true,
+	"timeBeforeReset": 15.0,
+	"restoreHudEditor": false,
+	"openingBehavior": -1,
+	"showOptionActionButtons": true,
+	"hudSelectAllKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.a"
+		],
+		"mods": 2
+	},
+	"glowOpacity": 25.0,
+	"hudDeleteKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.delete"
+		]
+	},
+	"hudCutKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.x"
+		],
+		"mods": 2
+	},
+	"showPageAnimations": true,
+	"uiAmbienceVolume": 1.0,
+	"hudUndoKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.z"
+		],
+		"mods": 2
+	},
+	"hudDragUiOpacity": 0.6,
+	"enableUISliderSounds": true,
+	"hudVisibilityKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.h"
+		],
+		"mods": 2
+	},
+	"enableUIAmbience": true,
+	"marqueeSelectionAnimDuration": 150.0,
+	"enableBackgroundBlur": true,
+	"rememberLastPage": 1,
+	"hudRedoKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.z"
+		],
+		"mods": 3
+	},
+	"reducedResFilter": 0,
+	"guiClosingAnimation": true,
+	"animationTime": 0.6,
+	"pauseGame": false,
+	"hudCopyKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.c"
+		],
+		"mods": 2
+	},
+	"showFirstLaunchMessage": false,
+	"showOpeningPageAnimation": false,
+	"enableUIMenuSounds": true,
+	"hudPasteKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.v"
+		],
+		"mods": 2
+	},
+	"hudRedoAltKeybind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind",
+		"keyCodes": [
+			"key.keyboard.y"
+		],
+		"mods": 2
+	},
+	"uiSharpening": 0.4,
+	"enableUISounds": true
+}

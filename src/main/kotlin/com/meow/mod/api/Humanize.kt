@@ -20,3 +20,16 @@ fun humanDelay(millis: Int): Int = humanDelay(millis.toLong()).toInt()
 
 private const val MIN_VARIATION = 0.10
 private const val MAX_VARIATION = 0.20
+
+// How long a person looks at something before acting on it. Every action that answers a
+// message (accepting a task, running a warp, calling Trevor) waits a fresh roll in this
+// range instead of firing on the tick the message arrived, so no two actions are ever
+// spaced the same way and none of them is instant.
+//
+// Unlike humanDelay above this is not a stretch of a configured value: the randomization
+// is the whole delay, which is what makes the pause between "prompt appeared" and
+// "button pressed" look like a decision rather than a timer.
+fun humanReaction(): Long = Random.nextLong(REACTION_MIN, REACTION_MAX + 1)
+
+private const val REACTION_MIN = 250L
+private const val REACTION_MAX = 500L

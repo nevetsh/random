@@ -1,0 +1,11 @@
+{
+  "widgets": {
+    "marketguard:trade_check": {
+      "x": 20,
+      "y": 86,
+      "enabled": true,
+      "scale": 1.0
+    }
+  },
+  "layouts": {}
+}

@@ -1,0 +1,76 @@
+{
+	"showInScreens": true,
+	"showShadow": false,
+	"layoutRefH": 505.0,
+	"bgChroma": false,
+	"customScale": 1.0,
+	"relativeY": 40.0,
+	"shadowChroma": false,
+	"relativeX": 0.0,
+	"section": {
+		"class": "org.polyfrost.oneconfig.api.hud.v1.Section",
+		"value": "BottomLeft"
+	},
+	"anchorOffsetY": 0.0,
+	"anchorOffsetX": 0.0,
+	"showBackground": true,
+	"showKey": -1,
+	"locked": true,
+	"shadowColor": 1073741824,
+	"anchorTargetId": "",
+	"textAlign": 1,
+	"staticWidth": false,
+	"textColor": -1,
+	"bgChromaSpeed": 1.0,
+	"layoutRefW": 960.0,
+	"textUnderline": false,
+	"padBottom": 0.0,
+	"alignment": {
+		"class": "org.polyfrost.compose.layout.PolyAlign",
+		"value": "Center"
+	},
+	"toggleKey": -1,
+	"shadowOffsetX": 2.0,
+	"staticW": 200.0,
+	"shadowOffsetY": 2.0,
+	"hidden": false,
+	"anchorPoint": {
+		"class": "org.polyfrost.oneconfig.api.hud.v1.HudAnchor",
+		"value": "TopLeft"
+	},
+	"selfAnchorPoint": {
+		"class": "org.polyfrost.oneconfig.api.hud.v1.HudAnchor",
+		"value": "Auto"
+	},
+	"showInChat": true,
+	"caseType": 0,
+	"posSchema": 1,
+	"padRight": 0.0,
+	"bgColor": -2147483648,
+	"textWeight": {
+		"class": "org.polyfrost.oneconfig.api.hud.v1.Weight",
+		"value": "Regular"
+	},
+	"padLeft": 0.0,
+	"padTop": 0.0,
+	"showInF3": true,
+	"showInTab": true,
+	"textChroma": false,
+	"textScale": 1.0,
+	"useGuiScale": true,
+	"shadowChromaSpeed": 1.0,
+	"growthAnchor": {
+		"class": "org.polyfrost.oneconfig.api.hud.v1.HudAnchor",
+		"value": "Auto"
+	},
+	"staticH": 48.0,
+	"textChromaSpeed": 1.0,
+	"textItalic": false,
+	"textBold": false,
+	"hudClass": "org.polyfrost.chatting.hud.ChatWindowHud",
+	"font": {
+		"class": "org.polyfrost.oneconfig.api.hud.v1.Font",
+		"value": "Minecraft"
+	},
+	"bgRadius": 4.0
+}

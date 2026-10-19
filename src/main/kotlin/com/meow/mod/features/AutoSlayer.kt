@@ -28,10 +28,20 @@ import org.slf4j.LoggerFactory
 object AutoSlayer : Feature(
 	"autoSlayer",
 	"Clicks through Maddox's menu.",
-	subcategory = "Auto Slayer",
+	subcategory = "Automation",
+	heading = "Auto Slayer",
 	displayName = "Auto Slayer",
 	enabledByDefault = false
 ) {
+	private val delayData = addSlider(
+		"delay",
+		300.0,
+		50.0,
+		1000.0,
+		"Delay between clicks, plus 10-20%.",
+		"Click Delay (ms)"
+	)
+
 	private val LOGGER = LoggerFactory.getLogger("MeowMod")
 
 	// How long a single run may take, how long a click is given to change the menu before it is
@@ -56,6 +66,10 @@ object AutoSlayer : Feature(
 	private var lastSlot = -1
 	private var lastAction = ""
 	private var lastBoss = ""
+
+	// How long to wait before the next click, rolled once when the last one happened.
+	private var lastClick = 0L
+	private var nextDelay = 0L
 
 	private var deadline = 0L
 
@@ -99,6 +113,8 @@ object AutoSlayer : Feature(
 		lastSlot = -1
 		lastAction = ""
 		lastBoss = ""
+		lastClick = 0L
+		nextDelay = 0L
 		deadline = 0L
 	}
 
@@ -151,9 +167,11 @@ object AutoSlayer : Feature(
 		// clicked in, nothing else is pressed: the same click is repeated instead, a bounded
 		// number of times, in case it never reached the server.
 		if (clickWait.unanswered(signature)) {
-			if (clickWait.retryDue(signature) && lastSlot >= 0) {
+			if (clickWait.retryDue(signature) && lastSlot >= 0 && now - lastClick >= nextDelay) {
 				LOGGER.info("[MeowMod] Auto Slayer: the menu did not change, pressing \"$lastAction\" again (slot $lastSlot)")
 				ScreenUtils.click(lastSlot)
+				lastClick = now
+				nextDelay = humanDelay(delayData.get().toLong())
 			}
 			return
 		}
@@ -173,11 +191,15 @@ object AutoSlayer : Feature(
 			LOGGER.info("[MeowMod] Auto Slayer: the finished quest was \"${entry.quest}\", that is what will be started again")
 		}
 
+		if (now - lastClick < nextDelay) return
+
 		LOGGER.info(
 			"[MeowMod] Auto Slayer: clicking \"${entry.action}\" at slot ${entry.slot}" +
 				if (entry.boss.isEmpty()) "" else " (\"${entry.boss}\")"
 		)
 		ScreenUtils.click(entry.slot)
+		lastClick = now
+		nextDelay = humanDelay(delayData.get().toLong())
 		clickWait.clicked(signature)
 		lastSlot = entry.slot
 		lastAction = entry.action

@@ -1,0 +1,104 @@
+{
+	"chatDelete": true,
+	"chatWindowMoved": false,
+	"centerChatHeads": false,
+	"smoothChatMs": 500.0,
+	"showChatHeads": true,
+	"hypixelOnlyChatTabs": true,
+	"rightClickCopy": false,
+	"screenshotForceShadow": false,
+	"chatSearch": true,
+	"hideChatHeadOnConsecutiveMessages": true,
+	"buttonShadow": true,
+	"removeScrollBar": true,
+	"peekMode": 0,
+	"fadeTime": 10.0,
+	"chatButtonHoveredColor": {
+		"value": [
+			255, 
+			255, 
+			160, 
+			255
+		],
+		"class": "org.polyfrost.compose.render.PolyColor"
+	},
+	"extendBG": true,
+	"chatShortcuts": false,
+	"customChatHeight": false,
+	"chatDeleteHistory": true,
+	"chatScreenshot": true,
+	"chatWindowLockMigrated": true,
+	"chatPeekBind": {
+		"class": "org.polyfrost.oneconfig.api.ui.v1.keybind.BindNotInScreen"
+	},
+	"chatBackgroundColor": {
+		"value": [
+			0, 
+			0, 
+			0, 
+			255
+		],
+		"class": "org.polyfrost.compose.render.PolyColor"
+	},
+	"chatCornerRadius": 6.0,
+	"smoothScrollingMs": 150.0,
+	"improvedHeads": true,
+	"hoveredChatBackgroundColor": {
+		"value": [
+			80, 
+			80, 
+			80, 
+			128
+		],
+		"class": "org.polyfrost.compose.render.PolyColor"
+	},
+	"unfocusedChatHeight": 90,
+	"smoothScrolling": true,
+	"focusedChatHeight": 180,
+	"smoothChat": true,
+	"rightClickCopyCtrl": true,
+	"chatCopy": true,
+	"roundedChatCorners": true,
+	"chatButtonBackgroundColor": {
+		"value": [
+			0, 
+			0, 
+			0, 
+			128
+		],
+		"class": "org.polyfrost.compose.render.PolyColor"
+	},
+	"chatButtonColor": {
+		"value": [
+			255, 
+			255, 
+			255, 
+			255
+		],
+		"class": "org.polyfrost.compose.render.PolyColor"
+	},
+	"customChatWidth": false,
+	"screenshotBorder": true,
+	"fade": true,
+	"chatWidth": 320,
+	"underlinedLinks": false,
+	"chatTabs": true,
+	"screenshotBackground": false,
+	"chatButtonHoveredBackgroundColor": {
+		"value": [
+			255, 
+			255, 
+			255, 
+			128
+		],
+		"class": "org.polyfrost.compose.render.PolyColor"
+	},
+	"textRenderType": 1,
+	"copyMode": 2,
+	"offsetNonPlayerMessages": false,
+	"modEnabled": true,
+	"peekScrolling": true,
+	"chatPeek": true,
+	"hypixelOnlyChatShortcuts": true,
+	"chatHeadShadow": 0
+}

@@ -1,0 +1,5 @@
+{
+	"knownHuds": [
+		"org.polyfrost.chatting.hud.ChatWindowHud"
+	]
+}
