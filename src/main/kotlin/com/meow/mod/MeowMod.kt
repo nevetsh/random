@@ -53,6 +53,12 @@ object MeowMod : ClientModInitializer {
 		AutoAuction, AutoBz, AutoSlayer, AutoSalvage, AutoReforge
 	)
 
+	private fun applyAccess() {
+		allFeatures.forEach { feature ->
+			if (Access.authorized && feature.configSwitch.get()) feature.enable() else feature.disable()
+		}
+	}
+
 	override fun onInitializeClient() {
 		// The General page is split into named groups, listed in this order however the modules
 		// happen to register their settings.
@@ -62,7 +68,7 @@ object MeowMod : ClientModInitializer {
 		// split into a group each.
 		Config.declareHeadings("Auto Click", "Auto Click", "Trigger Bot")
 
-		Access.check(Minecraft.getInstance().user.profileId)
+		Access.start(Minecraft.getInstance().user.profileId)
 
 		allFeatures.forEach { feature ->
 			feature.configSwitch.onChange { enabled ->
@@ -91,15 +97,18 @@ object MeowMod : ClientModInitializer {
 
 		Config.load()
 
-		allFeatures.forEach { feature ->
-			if (Access.authorized && feature.configSwitch.get()) feature.enable() else feature.disable()
-		}
+		applyAccess()
 
 		ClientTickEvents.END_CLIENT_TICK.register { mc ->
+			val before = Access.authorized
 			Access.check(mc.user.profileId)
+			if (Access.authorized != before) {
+				Access.notified = false
+				applyAccess()
+			}
 			if (!Access.authorized) {
 				allFeatures.forEach { it.disable() }
-				if (!Access.notified && mc.player != null) {
+				if (Access.settled && !Access.notified && mc.player != null) {
 					Access.notified = true
 					ChatUtils.sendMessage("&cMeowMod is not licensed for this account.", true)
 				}
